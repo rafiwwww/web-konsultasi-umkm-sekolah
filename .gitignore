@@ -1,6 +1,9 @@
 node_modules/
 dist/
 build/
+.next/
+*.tsbuildinfo
+backend/src/generated/prisma/
 .env
 .env.*
 !.env.example

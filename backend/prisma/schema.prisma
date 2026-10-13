@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  Admin
+  Dosen
+  UMKM
+  Siswa
+  Guru
+}
+
+enum ConsultationType {
+  umkm
+  school
+}
+
+enum ConsultationStatus {
+  pending
+  accepted
+  waiting_zoom
+  rejected
+  rescheduled
+  scheduled
+  completed
+  cancelled
+}
+
+enum SeminarStatus {
+  Draft
+  Published
+  Cancelled
+}
+
+enum SeminarCategory {
+  Business
+  Academic
+  Technology
+  Other
+}
+
+model User {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  name               String
+  email              String                 @unique
+  passwordHash       String
+  role               UserRole
+  avatar             String                 @default("")
+  profilePictureUrl  String?
+  phone              String?
+  status             String                 @default("Active")
+  organization       String?
+  businessName       String?
+  businessCategory   String?
+  businessAddress    String?
+  nim                String?
+  semester           Int?
+  schoolName         String?
+  subject            String?
+  grade              String?
+  lastLogin          DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  lecturer           Lecturer?
+  bookings           ConsultationBooking[]
+  createdSeminars    Seminar[]              @relation("SeminarCreator")
+  seminarRegistrations SeminarRegistration[]
+  activityLogs       ActivityLog[]
+
+  @@index([role])
+}
+
+model StudyProgram {
+  id        String     @id @default(uuid()) @db.Uuid
+  code      String     @unique
+  name      String
+  faculty   String
+  lecturers Lecturer[]
+  students  Student[]
+  createdAt DateTime   @default(now())
+}
+
+model Lecturer {
+  id             String                  @id @default(uuid()) @db.Uuid
+  lecturerCode   String                  @unique
+  userId         String?                 @unique @db.Uuid
+  studyProgramId String?                 @db.Uuid
+  name           String
+  email          String                  @unique
+  photo          String                  @default("")
+  specialization String
+  university     String                 @default("")
+  rating         Float                   @default(0)
+  experience     String                  @default("")
+  expertise      String[]                @default([])
+  phone          String                  @default("")
+  bio            String                  @default("")
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  studyProgram   StudyProgram?           @relation(fields: [studyProgramId], references: [id], onDelete: SetNull)
+  availabilities LecturerAvailability[]
+  bookings       ConsultationBooking[]
+  sessions       ConsultationSession[]
+  seminars       Seminar[]
+
+  @@index([studyProgramId])
+}
+
+model Student {
+  id             String        @id @default(uuid()) @db.Uuid
+  nim            String        @unique
+  name           String
+  email          String        @unique
+  studyProgramId String?       @db.Uuid
+  semester       Int
+  phone          String        @default("")
+  studyProgram   StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: SetNull)
+}
+
+model Semester {
+  id          String                  @id @default(uuid()) @db.Uuid
+  name        String                  @unique
+  startDate   DateTime                @db.Date
+  endDate     DateTime                @db.Date
+  isActive    Boolean                 @default(false)
+  createdAt   DateTime                @default(now())
+  availabilities LecturerAvailability[]
+  bookings    ConsultationBooking[]
+}
+
+model LecturerAvailability {
+  id          String   @id @default(uuid()) @db.Uuid
+  lecturerId  String   @db.Uuid
+  semesterId  String   @db.Uuid
+  dayOfWeek   String
+  timeSlots   Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  lecturer    Lecturer @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+  semester    Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+  @@unique([lecturerId, semesterId, dayOfWeek])
+  @@index([semesterId, isActive])
+}
+
+model ConsultationBooking {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @db.Uuid
+  lecturerId         String             @db.Uuid
+  semesterId         String             @db.Uuid
+  sessionId          String?            @db.Uuid
+  consultationType   ConsultationType
+  title              String
+  category           String
+  priority           String             @default("normal")
+  description        String             @db.Text
+  organization       String
+  contactPerson      String
+  phone              String
+  email              String
+  scheduledDate      DateTime           @db.Date
+  scheduledDay       String
+  startTime          String
+  endTime            String
+  status             ConsultationStatus @default(pending)
+  feedback           String?            @db.Text
+  rating             Int?
+  zoomLink           String?
+  rescheduleNote     String?            @db.Text
+  attachmentFileName String?
+  attachmentUrl      String?
+  completedAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecturer           Lecturer           @relation(fields: [lecturerId], references: [id], onDelete: Restrict)
+  semester           Semester           @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  session            ConsultationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([lecturerId, scheduledDate, startTime])
+  @@index([status])
+}
+
+model ConsultationSession {
+  id             String                @id @default(uuid()) @db.Uuid
+  lecturerId     String                @db.Uuid
+  scheduledDate  DateTime              @db.Date
+  startTime      String
+  endTime        String
+  status         String                @default("waiting_zoom")
+  zoomLink       String?
+  notes          String?               @db.Text
+  confirmedAt    DateTime?
+  confirmedBy    String?               @db.Uuid
+  evaluationLink String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  lecturer       Lecturer              @relation(fields: [lecturerId], references: [id], onDelete: Restrict)
+  bookings       ConsultationBooking[]
+
+  @@index([lecturerId, scheduledDate])
+}
+
+model Seminar {
+  id             String                 @id @default(uuid()) @db.Uuid
+  title          String
+  description    String                 @db.Text
+  host           String
+  hostId         String?                @db.Uuid
+  eventDate      DateTime               @db.Date
+  eventTime      String
+  location       String
+  zoomLink       String?
+  posterUrl      String?
+  status         SeminarStatus          @default(Draft)
+  quota          Int
+  category       SeminarCategory        @default(Other)
+  targetAudience String[]               @default([])
+  createdBy      String                 @db.Uuid
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  creator        User                   @relation("SeminarCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  lecturer       Lecturer?              @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  registrations  SeminarRegistration[]
+
+  @@index([status, eventDate])
+}
+
+model SeminarRegistration {
+  id         String   @id @default(uuid()) @db.Uuid
+  seminarId  String   @db.Uuid
+  userId     String   @db.Uuid
+  createdAt  DateTime @default(now())
+  seminar    Seminar  @relation(fields: [seminarId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([seminarId, userId])
+  @@index([userId])
+}
+
+model ActivityLog {
+  id                String   @id @default(uuid()) @db.Uuid
+  action            String
+  description       String   @db.Text
+  performedBy       String   @db.Uuid
+  performedByRole   UserRole
+  relatedBookingId  String?  @db.Uuid
+  relatedSessionId  String?  @db.Uuid
+  timestamp         DateTime @default(now())
+  user              User     @relation(fields: [performedBy], references: [id], onDelete: Restrict)
+
+  @@index([timestamp])
+}
