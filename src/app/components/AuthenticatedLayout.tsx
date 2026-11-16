@@ -53,7 +53,11 @@ export function AuthenticatedLayout() {
           { name: "Konsultasi Baru", href: "/consultation/new", icon: FileText },
           { name: "Jadwal Saya", href: "/consultation/manage", icon: Calendar },
           { name: "Seminar", href: "/seminars", icon: Video },
-          { name: "Riwayat", href: "/consultation/manage", icon: History },
+          {
+            name: "Riwayat",
+            href: user.role === "Guru" ? "/guru/history" : "/consultation/manage",
+            icon: History,
+          },
         ];
       case "Siswa":
         return [
@@ -301,8 +305,11 @@ export function AuthenticatedLayout() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Jam Layanan</h3>
-              <p className="text-sm text-gray-600">Senin - Jumat: 08.00 - 16.00 WIB</p>
-              <p className="text-sm text-gray-600">Sabtu - Minggu: Libur</p>
+              <p className="text-sm text-gray-600">Senin–Jumat: 09:00–17:00</p>
+              <p className="text-sm text-gray-600">Sabtu: 09:00–15:00</p>
+              <p className="text-sm text-gray-600">
+                Minggu dan Hari Libur Nasional: Libur
+              </p>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-gray-200">

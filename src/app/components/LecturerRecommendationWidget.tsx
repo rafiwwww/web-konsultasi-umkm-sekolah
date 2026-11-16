@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useConsultationSystem } from "../context/ConsultationSystemContext";
 import { Avatar } from "./Avatar";
-import { FACULTY_HIERARCHY } from "../data/facultyHierarchy";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -27,8 +26,13 @@ const DAY_ORDER = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu
 
 export function LecturerRecommendationWidget() {
   const navigate = useNavigate();
-  const { lecturers, lecturerAvailabilities, studyPrograms, activeSemester } =
-    useConsultationSystem();
+  const {
+    lecturers,
+    lecturerAvailabilities,
+    studyPrograms,
+    activeSemester,
+    facultyHierarchy,
+  } = useConsultationSystem();
 
   const [selectedFaculty, setSelectedFaculty] = useState<string>("");
   const [selectedProdi, setSelectedProdi] = useState<string>("");
@@ -40,7 +44,7 @@ export function LecturerRecommendationWidget() {
   const todayDay = DAY_NAMES[new Date().getDay()];
 
   // Derived data from selections
-  const facultyEntry = FACULTY_HIERARCHY.find((f) => f.name === selectedFaculty) ?? null;
+  const facultyEntry = facultyHierarchy.find((f) => f.name === selectedFaculty) ?? null;
   const prodiEntry = facultyEntry?.prodi.find((p) => p.name === selectedProdi) ?? null;
   const peminatanEntry = prodiEntry?.peminatan.find((pm) => pm.name === selectedPeminatan) ?? null;
   const activeKeywords = peminatanEntry?.keywords ?? null;
@@ -187,7 +191,7 @@ export function LecturerRecommendationWidget() {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Rekomendasi Dosen</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Cari Dosen</h2>
             <p className="text-sm text-gray-500 mt-1">
               Temukan dosen yang tepat untuk konsultasi Anda
             </p>
@@ -196,7 +200,7 @@ export function LecturerRecommendationWidget() {
           {!isSearchMode && selectedFaculty && (
             <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 flex-wrap justify-end max-w-xs">
               <span className="text-blue-600 font-medium truncate max-w-[100px]" title={selectedFaculty}>
-                {FACULTY_HIERARCHY.find((f) => f.name === selectedFaculty)?.shortName}
+                {facultyHierarchy.find((f) => f.name === selectedFaculty)?.shortName}
               </span>
               {selectedProdi && (
                 <>
@@ -343,7 +347,7 @@ export function LecturerRecommendationWidget() {
             1 · Pilih Fakultas / School
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {FACULTY_HIERARCHY.map((faculty) => {
+            {facultyHierarchy.map((faculty) => {
               const isSelected = selectedFaculty === faculty.name;
               return (
                 <button

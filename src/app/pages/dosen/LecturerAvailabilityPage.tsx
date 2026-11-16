@@ -30,6 +30,19 @@ const TIME_SLOT_OPTIONS = [
   { startTime: "16:20", endTime: "18:00" },
 ];
 
+const ACTIVE_BOOKING_STATUSES = new Set([
+  "pending",
+  "accepted",
+  "waiting_zoom",
+  "scheduled",
+  "rescheduled",
+]);
+
+const toMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 export function LecturerAvailabilityPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -37,6 +50,7 @@ export function LecturerAvailabilityPage() {
     lecturers,
     activeSemester,
     lecturerAvailabilities,
+    consultationBookings,
     createAvailability,
     deleteAvailability,
     getLecturerByEmail,
@@ -64,6 +78,15 @@ export function LecturerAvailabilityPage() {
         s => !(s.startTime === slot.startTime && s.endTime === slot.endTime)
       ));
     } else {
+      const overlaps = selectedSlots.some(
+        selected =>
+          toMinutes(selected.startTime) < toMinutes(slot.endTime) &&
+          toMinutes(slot.startTime) < toMinutes(selected.endTime)
+      );
+      if (overlaps) {
+        showToast("Slot waktu tidak boleh saling tumpang tindih.", "warning");
+        return;
+      }
       setSelectedSlots(prev => [...prev, { ...slot, id: `slot-${Date.now()}-${Math.random()}` }]);
     }
   };
@@ -105,6 +128,33 @@ export function LecturerAvailabilityPage() {
   };
 
   const handleDeleteAvailability = (id: string, day: string) => {
+    const availability = currentAvailabilities.find(a => a.id === id);
+    const hasActiveBooking = Boolean(
+      availability &&
+      currentLecturer &&
+      activeSemester &&
+      consultationBookings.some(
+        booking =>
+          booking.lecturerId === currentLecturer.id &&
+          booking.semesterId === activeSemester.id &&
+          booking.scheduledDay === day &&
+          ACTIVE_BOOKING_STATUSES.has(booking.status) &&
+          availability.timeSlots.some(
+            slot =>
+              slot.startTime === booking.scheduledTimeSlot.startTime &&
+              slot.endTime === booking.scheduledTimeSlot.endTime
+          )
+      )
+    );
+
+    if (hasActiveBooking) {
+      showToast(
+        "Jadwal tidak dapat dihapus karena memiliki konsultasi aktif.",
+        "warning"
+      );
+      return;
+    }
+
     if (confirm(`Hapus jadwal untuk hari ${day}?`)) {
       deleteAvailability(id);
       showToast("Jadwal berhasil dihapus", "success");

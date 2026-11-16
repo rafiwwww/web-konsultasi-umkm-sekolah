@@ -21,6 +21,7 @@ import { PlaceholderPage } from "./pages/PlaceholderPage";
 // Admin pages
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { KelolaUserPage } from "./pages/admin/KelolaUserPage";
+import { KelolaFacultyDepartmentPage } from "./pages/admin/KelolaFacultyDepartmentPage";
 import { TambahUserPage } from "./pages/admin/TambahUserPage";
 import { KelolaSeminarPage } from "./pages/admin/KelolaSeminarPage";
 import { SemuaKonsultasiPage } from "./pages/admin/SemuaKonsultasiPage";
@@ -33,6 +34,9 @@ import { JadwalKonsultasiPage } from "./pages/dosen/JadwalKonsultasiPage";
 import { SeminarPage } from "./pages/dosen/SeminarPage";
 import { RiwayatPage } from "./pages/dosen/RiwayatPage";
 import { LecturerAvailabilityPage } from "./pages/dosen/LecturerAvailabilityPage";
+
+// Guru pages
+import { GuruRiwayatPage } from "./pages/guru/RiwayatPage";
 
 // Shared pages
 import { BuatSeminarPage } from "./pages/shared/BuatSeminarPage";
@@ -82,6 +86,10 @@ export const router = createBrowserRouter([
           // Admin routes
           { path: "/admin/dashboard", Component: AdminDashboardPage },
           { path: "/admin/users", Component: KelolaUserPage },
+          {
+            path: "/admin/users/faculties-departments",
+            Component: KelolaFacultyDepartmentPage,
+          },
           { path: "/admin/users/create", Component: TambahUserPage },
           { path: "/admin/seminars", Component: KelolaSeminarPage },
           { path: "/admin/consultations", Component: SemuaKonsultasiPage },
@@ -94,6 +102,9 @@ export const router = createBrowserRouter([
           { path: "/mentor/availability", Component: LecturerAvailabilityPage },
           { path: "/mentor/seminars", Component: SeminarPage },
           { path: "/mentor/history", Component: RiwayatPage },
+
+          // Guru routes
+          { path: "/guru/history", Component: GuruRiwayatPage },
           
           // Shared routes (Admin & Dosen only)
           { path: "/seminar/new", Component: BuatSeminarPage },

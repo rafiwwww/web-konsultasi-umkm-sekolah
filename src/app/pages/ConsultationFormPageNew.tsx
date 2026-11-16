@@ -19,6 +19,8 @@ import { useAuth } from "../context/AuthContext";
 import { useConsultationSystem, TimeSlot } from "../context/ConsultationSystemContext";
 import { Avatar } from "../components/Avatar";
 
+const LECTURERS_PER_PAGE = 6;
+
 export function ConsultationFormPageNew() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -48,6 +50,7 @@ export function ConsultationFormPageNew() {
     consultationType: getConsultationTypeFromRole(),
     title: "",
     category: "",
+    priority: "medium",
     description: "",
     organization: "",
     contactPerson: "",
@@ -72,7 +75,9 @@ export function ConsultationFormPageNew() {
   const [selectedLecturerId, setSelectedLecturerId] = useState<string | null>(
     preselectedLecturerId
   );
-
+  const [lecturerSearchQuery, setLecturerSearchQuery] = useState("");
+  const [lecturerFilterField, setLecturerFilterField] = useState("all");
+  const [lecturerPage, setLecturerPage] = useState(1);
 
   // Attachment
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -237,7 +242,7 @@ export function ConsultationFormPageNew() {
       consultationType: formData.consultationType === "umkm" ? "umkm" : "school",
       title: formData.title,
       category: formData.category,
-      priority: "medium",
+      priority: formData.priority,
       description: formData.description,
       organization: formData.organization,
       contactPerson: formData.contactPerson,
@@ -265,6 +270,36 @@ export function ConsultationFormPageNew() {
   };
 
   const selectedLecturer = lecturers.find((l) => l.id === selectedLecturerId);
+  const filteredLecturers = lecturers.filter((lecturer) => {
+    const query = lecturerSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      lecturer.name.toLowerCase().includes(query) ||
+      lecturer.specialization.toLowerCase().includes(query) ||
+      lecturer.expertise.some((expertise) =>
+        expertise.toLowerCase().includes(query),
+      );
+    const matchesFilter =
+      lecturerFilterField === "all" ||
+      lecturer.specialization
+        .toLowerCase()
+        .includes(lecturerFilterField);
+
+    return matchesSearch && matchesFilter;
+  });
+  const lecturerPageCount = Math.ceil(
+    filteredLecturers.length / LECTURERS_PER_PAGE,
+  );
+  const visibleLecturers = filteredLecturers.slice(
+    (lecturerPage - 1) * LECTURERS_PER_PAGE,
+    lecturerPage * LECTURERS_PER_PAGE,
+  );
+
+  const handleLecturerChange = (lecturerId: string | null) => {
+    setSelectedLecturerId(lecturerId);
+    setSelectedDate(null);
+    setSelectedTimeSlot(null);
+  };
 
   return (
     <div className="min-h-[calc(100vh-theme(spacing.16))] bg-gray-50">
@@ -353,6 +388,28 @@ export function ConsultationFormPageNew() {
                   </select>
                 </div>
 
+                <div>
+                  <label
+                    htmlFor="priority"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Prioritas <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="priority"
+                    name="priority"
+                    required
+                    value={formData.priority}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Rendah</option>
+                    <option value="medium">Sedang</option>
+                    <option value="high">Tinggi</option>
+                    <option value="urgent">Mendesak</option>
+                  </select>
+                </div>
+
                 <div className="md:col-span-2">
                   <label
                     htmlFor="title"
@@ -374,11 +431,199 @@ export function ConsultationFormPageNew() {
               </div>
             </div>
 
-            {/* Section 2: Dosen Terpilih */}
+            {/* Section 2: Cari Dosen */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                Dosen Konsultasi
+                Cari Dosen
               </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Pilih dosen yang sesuai dengan kebutuhan konsultasi Anda
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="search"
+                    value={lecturerSearchQuery}
+                    onChange={(event) => {
+                      setLecturerSearchQuery(event.target.value);
+                      setLecturerPage(1);
+                    }}
+                    placeholder="Cari nama dosen atau keahlian"
+                    aria-label="Cari nama dosen atau keahlian"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <select
+                  value={lecturerFilterField}
+                  onChange={(event) => {
+                    setLecturerFilterField(event.target.value);
+                    setLecturerPage(1);
+                  }}
+                  aria-label="Filter bidang dosen"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Semua Bidang/Jurusan</option>
+                  <option value="bisnis">Pengembangan Bisnis</option>
+                  <option value="keuangan">Keuangan & Akuntansi</option>
+                  <option value="teknologi">Teknologi & Digital</option>
+                  <option value="pendidikan">Pendidikan</option>
+                  <option value="operasional">Operasional</option>
+                  <option value="hukum">Hukum & Legalitas</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {visibleLecturers.map((lecturer) => {
+                  const isSelected = selectedLecturerId === lecturer.id;
+                  const availableDays = activeSemester
+                    ? lecturerAvailabilities
+                        .filter(
+                          (availability) =>
+                            availability.lecturerId === lecturer.id &&
+                            availability.semesterId === activeSemester.id &&
+                            availability.isActive,
+                        )
+                        .map((availability) => availability.dayOfWeek)
+                    : [];
+
+                  return (
+                    <div
+                      key={lecturer.id}
+                      className={`relative bg-white border-2 rounded-lg p-4 transition-all cursor-pointer hover:shadow-md ${
+                        isSelected
+                          ? "border-blue-500 shadow-md"
+                          : "border-gray-200 hover:border-blue-300"
+                      }`}
+                      onClick={() => handleLecturerChange(lecturer.id)}
+                    >
+                      {isSelected && (
+                        <div className="absolute top-3 right-3">
+                          <div className="bg-blue-500 text-white rounded-full p-1">
+                            <CheckCircle className="w-4 h-4" />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-start gap-3 mb-3">
+                        <Avatar
+                          profilePictureUrl={lecturer.photo || undefined}
+                          initials={lecturer.name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((name) => name[0])
+                            .join("")}
+                          size="lg"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                            {lecturer.name}
+                          </h3>
+                          <p className="text-xs text-gray-600 mb-1">
+                            {lecturer.specialization}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {lecturer.experience}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                        <Building2 className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{lecturer.university}</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {lecturer.expertise.slice(0, 3).map((expertise) => (
+                          <span
+                            key={expertise}
+                            className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded"
+                          >
+                            {expertise}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                        <Calendar className="w-3 h-3 flex-shrink-0" />
+                        <span>
+                          {availableDays.length
+                            ? availableDays.join(", ")
+                            : "Jadwal belum tersedia"}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleLecturerChange(lecturer.id);
+                        }}
+                        className={`w-full py-2 rounded-md text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {isSelected ? "Dosen Terpilih" : "Pilih Dosen"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filteredLecturers.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <GraduationCap className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">
+                    Tidak ada dosen yang sesuai dengan pencarian
+                  </p>
+                </div>
+              )}
+
+              {lecturerPageCount > 1 && (
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-500">
+                    Menampilkan{" "}
+                    {Math.min(
+                      (lecturerPage - 1) * LECTURERS_PER_PAGE + 1,
+                      filteredLecturers.length,
+                    )}
+                    –
+                    {Math.min(
+                      lecturerPage * LECTURERS_PER_PAGE,
+                      filteredLecturers.length,
+                    )}{" "}
+                    dari {filteredLecturers.length} dosen
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLecturerPage((page) => Math.max(1, page - 1))
+                      }
+                      disabled={lecturerPage === 1}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLecturerPage((page) =>
+                          Math.min(lecturerPageCount, page + 1),
+                        )
+                      }
+                      disabled={lecturerPage === lecturerPageCount}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Berikutnya
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {selectedLecturer ? (
                 <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <Avatar
@@ -393,28 +638,15 @@ export function ConsultationFormPageNew() {
                       <Building2 className="w-3 h-3" />{selectedLecturer.university}
                     </p>
                   </div>
-                  <Link
-                    to="/dashboard"
+                  <button
+                    type="button"
+                    onClick={() => handleLecturerChange(null)}
                     className="text-xs text-blue-600 hover:text-blue-800 underline flex-shrink-0"
                   >
                     Ganti Dosen
-                  </Link>
+                  </button>
                 </div>
-              ) : (
-                <div className="py-10 text-center border-2 border-dashed border-gray-200 rounded-lg">
-                  <GraduationCap className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm font-medium text-gray-700 mb-1">Belum ada dosen yang dipilih</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Silakan pilih Dosen terlebih dahulu melalui Dashboard untuk melanjutkan konsultasi.
-                  </p>
-                  <Link
-                    to="/dashboard"
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    Pilih Dosen di Dashboard
-                  </Link>
-                </div>
-              )}
+              ) : null}
             </div>
 
             {/* Section 2b: Jadwal Konsultasi */}

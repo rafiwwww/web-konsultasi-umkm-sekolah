@@ -4,7 +4,6 @@ import { User, Mail, Lock, Building2, GraduationCap, Briefcase, CheckCircle, Che
 import { useToast } from "../../components/Toast";
 import { useAuth } from "../../context/AuthContext";
 import { useConsultationSystem } from "../../context/ConsultationSystemContext";
-import { FACULTY_HIERARCHY } from "../../data/facultyHierarchy";
 
 const BINUS_CAMPUSES = [
   "BINUS @Kemanggisan",
@@ -21,7 +20,8 @@ export function TambahUserPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { createUser } = useAuth();
-  const { createLecturer, studyPrograms } = useConsultationSystem();
+  const { createLecturer, studyPrograms, facultyHierarchy } =
+    useConsultationSystem();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -49,7 +49,7 @@ export function TambahUserPage() {
   const [createdDosenName, setCreatedDosenName] = useState("");
 
   // Derived hierarchy options
-  const facultyEntry = FACULTY_HIERARCHY.find(f => f.name === formData.selectedFaculty) ?? null;
+  const facultyEntry = facultyHierarchy.find(f => f.name === formData.selectedFaculty) ?? null;
   const availableProdi = facultyEntry?.prodi ?? [];
   const prodiEntry = facultyEntry?.prodi.find(p => p.name === formData.selectedProdi) ?? null;
   const availablePeminatan = prodiEntry?.peminatan ?? [];
@@ -98,6 +98,9 @@ export function TambahUserPage() {
     if (formData.role === "Siswa") {
       if (!formData.schoolName.trim()) newErrors.schoolName = "Nama sekolah wajib diisi";
       if (!formData.grade.trim()) newErrors.grade = "Kelas wajib diisi";
+    }
+    if (formData.role === "Guru" && !formData.schoolName.trim()) {
+      newErrors.schoolName = "Asal sekolah wajib diisi";
     }
     if (formData.role === "UMKM") {
       if (!formData.businessName.trim()) newErrors.businessName = "Nama usaha wajib diisi";
@@ -183,7 +186,11 @@ export function TambahUserPage() {
         showToast("User berhasil ditambahkan ke sistem.", "success");
         setTimeout(() => navigate("/admin/users"), 1500);
       } else if (formData.role === "Guru") {
-        createUser({ ...baseUserData, organization: "Sekolah Menengah Atas" });
+        createUser({
+          ...baseUserData,
+          schoolName: formData.schoolName,
+          organization: formData.schoolName,
+        });
         showToast("User berhasil ditambahkan ke sistem.", "success");
         setTimeout(() => navigate("/admin/users"), 1500);
       }
@@ -373,7 +380,7 @@ export function TambahUserPage() {
                           <select id="selectedFaculty" name="selectedFaculty" value={formData.selectedFaculty} onChange={handleInputChange}
                             className={`w-full pl-10 pr-8 py-2 border ${errors.selectedFaculty ? "border-red-500" : "border-gray-300"} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}>
                             <option value="">— Pilih Fakultas / School —</option>
-                            {FACULTY_HIERARCHY.map(f => (
+                            {facultyHierarchy.map(f => (
                               <option key={f.name} value={f.name}>{f.shortName} — {f.name}</option>
                             ))}
                           </select>
@@ -449,11 +456,12 @@ export function TambahUserPage() {
                   )}
 
                   {/* Siswa Fields */}
-                  {formData.role === "Siswa" && (
+                  {(formData.role === "Siswa" || formData.role === "Guru") && (
                     <>
                       <div className="mb-4">
                         <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-2">
-                          Nama Sekolah <span className="text-red-500">*</span>
+                          {formData.role === "Guru" ? "Asal Sekolah" : "Nama Sekolah"}{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -463,18 +471,20 @@ export function TambahUserPage() {
                         </div>
                         {errors.schoolName && <p className="mt-1 text-sm text-red-500">{errors.schoolName}</p>}
                       </div>
-                      <div className="mb-4">
-                        <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
-                          Kelas <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <input type="text" id="grade" name="grade" value={formData.grade} onChange={handleInputChange}
-                            className={`w-full pl-10 pr-4 py-2 border ${errors.grade ? "border-red-500" : "border-gray-300"} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                            placeholder="Contoh: 12 IPA 1" />
+                      {formData.role === "Siswa" && (
+                        <div className="mb-4">
+                          <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
+                            Kelas <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <input type="text" id="grade" name="grade" value={formData.grade} onChange={handleInputChange}
+                              className={`w-full pl-10 pr-4 py-2 border ${errors.grade ? "border-red-500" : "border-gray-300"} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                              placeholder="Contoh: 12 IPA 1" />
+                          </div>
+                          {errors.grade && <p className="mt-1 text-sm text-red-500">{errors.grade}</p>}
                         </div>
-                        {errors.grade && <p className="mt-1 text-sm text-red-500">{errors.grade}</p>}
-                      </div>
+                      )}
                     </>
                   )}
 

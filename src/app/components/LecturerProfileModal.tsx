@@ -131,7 +131,7 @@ export function LecturerProfileModal({
             lecturer.averageRating !== undefined) && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-3">Statistik</h4>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Total Consultations */}
                 {lecturer.totalConsultations !== undefined && (
                   <div className="bg-blue-50 rounded-lg border border-blue-100 p-4 text-center">

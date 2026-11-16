@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, Edit, Trash2, Filter, Users as UsersIcon } from "lucide-react";
+import { Building2, Search, Plus, Edit, Trash2, Filter, Users as UsersIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Modal, ConfirmModal } from "../../components/Modal";
 import { useToast } from "../../components/Toast";
@@ -25,6 +25,8 @@ export function KelolaUserPage() {
       role: u.role || "UMKM",
       status: u.status || "Active",
       createdAt: u.createdAt,
+      schoolName:
+        u.role === "Guru" ? u.schoolName || u.organization || "-" : "-",
     }));
   }, [users]);
 
@@ -109,18 +111,29 @@ export function KelolaUserPage() {
     <div className="min-h-[calc(100vh-theme(spacing.16))] bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Kelola User</h1>
             <p className="text-gray-600">Kelola semua pengguna platform</p>
           </div>
-          <button
-            onClick={() => navigate("/admin/users/create")}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Tambah User
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/users/faculties-departments")}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              Kelola Fakultas & Jurusan
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/admin/users/create")}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Tambah User
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -186,6 +199,9 @@ export function KelolaUserPage() {
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Asal Sekolah
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -207,6 +223,9 @@ export function KelolaUserPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getRoleColor(user.role)}`}>{user.role}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{user.schoolName}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status)}`}>

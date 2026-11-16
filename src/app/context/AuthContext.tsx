@@ -391,7 +391,8 @@ function getRoleSpecificFields(role: UserRole, email: string): Partial<User> {
       };
     case "Guru":
       return {
-        organization: "Sekolah Menengah Atas",
+        organization: "SMA Negeri 8 Jakarta",
+        schoolName: "SMA Negeri 8 Jakarta",
         subject: "Matematika",
       };
     default:

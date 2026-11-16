@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { LECTURER_DATABASE, LecturerIdentity } from "../data/lecturerDatabase";
 import { STUDENT_DATABASE, StudentIdentity } from "../data/studentDatabase";
+import { FACULTY_HIERARCHY } from "../data/facultyHierarchy";
+import type { FacultyEntry, ProdiEntry } from "../data/facultyHierarchy";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -145,6 +147,7 @@ interface ConsultationSystemContextType {
   // Data
   semesters: Semester[];
   studyPrograms: StudyProgram[];
+  facultyHierarchy: FacultyEntry[];
   lecturers: Lecturer[];
   students: Student[];
   lecturerAvailabilities: LecturerAvailability[];
@@ -162,6 +165,22 @@ interface ConsultationSystemContextType {
   createStudyProgram: (program: Omit<StudyProgram, "id">) => void;
   updateStudyProgram: (id: string, updates: Partial<StudyProgram>) => void;
   deleteStudyProgram: (id: string) => void;
+
+  // Faculty and department management
+  createFaculty: (faculty: Omit<FacultyEntry, "prodi">) => void;
+  updateFaculty: (
+    name: string,
+    updates: Partial<Pick<FacultyEntry, "name" | "shortName">>,
+  ) => void;
+  deleteFaculty: (name: string) => void;
+  createDepartment: (facultyName: string, department: ProdiEntry) => void;
+  updateDepartment: (
+    currentFacultyName: string,
+    currentName: string,
+    targetFacultyName: string,
+    updates: ProdiEntry,
+  ) => void;
+  deleteDepartment: (facultyName: string, departmentName: string) => void;
   
   // Lecturer management
   createLecturer: (lecturer: Omit<Lecturer, "id">) => void;
@@ -713,6 +732,18 @@ const INITIAL_STUDENTS: Student[] = [
 export function ConsultationSystemProvider({ children }: { children: ReactNode }) {
   const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
   const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>(INITIAL_STUDY_PROGRAMS);
+  const [facultyHierarchy, setFacultyHierarchy] = useState<FacultyEntry[]>(() =>
+    FACULTY_HIERARCHY.map(faculty => ({
+      ...faculty,
+      prodi: faculty.prodi.map(department => ({
+        ...department,
+        peminatan: department.peminatan.map(specialty => ({
+          ...specialty,
+          keywords: [...specialty.keywords],
+        })),
+      })),
+    })),
+  );
   const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [lecturerAvailabilities, setLecturerAvailabilities] = useState<LecturerAvailability[]>([]);
@@ -757,6 +788,84 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
   const deleteStudyProgram = (id: string) => {
     setStudyPrograms(prev => prev.filter(p => p.id !== id));
+  };
+
+  // ==================== FACULTY AND DEPARTMENT MANAGEMENT ====================
+
+  const createFaculty = (faculty: Omit<FacultyEntry, "prodi">) => {
+    setFacultyHierarchy(prev => [...prev, { ...faculty, prodi: [] }]);
+  };
+
+  const updateFaculty = (
+    name: string,
+    updates: Partial<Pick<FacultyEntry, "name" | "shortName">>,
+  ) => {
+    setFacultyHierarchy(prev =>
+      prev.map(faculty =>
+        faculty.name === name ? { ...faculty, ...updates } : faculty,
+      ),
+    );
+  };
+
+  const deleteFaculty = (name: string) => {
+    setFacultyHierarchy(prev => prev.filter(faculty => faculty.name !== name));
+  };
+
+  const createDepartment = (facultyName: string, department: ProdiEntry) => {
+    setFacultyHierarchy(prev =>
+      prev.map(faculty =>
+        faculty.name === facultyName
+          ? { ...faculty, prodi: [...faculty.prodi, department] }
+          : faculty,
+      ),
+    );
+  };
+
+  const updateDepartment = (
+    currentFacultyName: string,
+    currentName: string,
+    targetFacultyName: string,
+    updates: ProdiEntry,
+  ) => {
+    setFacultyHierarchy(prev =>
+      prev.map(faculty => {
+        if (faculty.name === currentFacultyName) {
+          if (currentFacultyName === targetFacultyName) {
+            return {
+              ...faculty,
+              prodi: faculty.prodi.map(department =>
+                department.name === currentName ? updates : department,
+              ),
+            };
+          }
+          return {
+            ...faculty,
+            prodi: faculty.prodi.filter(
+              department => department.name !== currentName,
+            ),
+          };
+        }
+        if (faculty.name === targetFacultyName) {
+          return { ...faculty, prodi: [...faculty.prodi, updates] };
+        }
+        return faculty;
+      }),
+    );
+  };
+
+  const deleteDepartment = (facultyName: string, departmentName: string) => {
+    setFacultyHierarchy(prev =>
+      prev.map(faculty =>
+        faculty.name === facultyName
+          ? {
+              ...faculty,
+              prodi: faculty.prodi.filter(
+                department => department.name !== departmentName,
+              ),
+            }
+          : faculty,
+      ),
+    );
   };
 
   // ==================== LECTURER MANAGEMENT ====================
@@ -1152,6 +1261,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     // Data
     semesters,
     studyPrograms,
+    facultyHierarchy,
     lecturers,
     students,
     lecturerAvailabilities,
@@ -1167,6 +1277,14 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     createStudyProgram,
     updateStudyProgram,
     deleteStudyProgram,
+
+    // Faculty and department management
+    createFaculty,
+    updateFaculty,
+    deleteFaculty,
+    createDepartment,
+    updateDepartment,
+    deleteDepartment,
     
     // Lecturer management
     createLecturer,
