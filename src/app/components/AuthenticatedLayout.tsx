@@ -28,7 +28,7 @@ export function AuthenticatedLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuth();
+  const { user, authLoading, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -105,12 +105,19 @@ export function AuthenticatedLayout() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       navigate("/login");
     }
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
-  // If not authenticated, show nothing while redirecting
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
+        Memeriksa sesi...
+      </div>
+    );
+  }
+
   if (!user) {
     return null;
   }

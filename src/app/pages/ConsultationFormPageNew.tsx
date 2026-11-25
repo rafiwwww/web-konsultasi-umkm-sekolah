@@ -232,31 +232,6 @@ export function ConsultationFormPageNew() {
     const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const scheduledDay = dayNames[dateObj.getUTCDay()];
 
-<<<<<<< Updated upstream
-    createBooking({
-      userId,
-      userName: user.name || "User",
-      userRole: user.role || "UMKM",
-      lecturerId: selectedLecturerId,
-      lecturerName: lecturer.name,
-      semesterId: activeSemester.id,
-      consultationType: formData.consultationType === "umkm" ? "umkm" : "school",
-      title: formData.title,
-      category: formData.category,
-      priority: formData.priority,
-      description: formData.description,
-      organization: formData.organization,
-      contactPerson: formData.contactPerson,
-      phone: formData.phone,
-      email: formData.email,
-      scheduledDate: selectedDate,
-      scheduledDay,
-      scheduledTimeSlot: selectedTimeSlot,
-      status: "pending",
-      attachmentFileName: attachedFile?.name,
-      attachmentDataUrl: attachedDataUrl || undefined,
-    });
-=======
     try {
       await createBooking({
         userId,
@@ -268,7 +243,6 @@ export function ConsultationFormPageNew() {
         consultationType: formData.consultationType === "umkm" ? "umkm" : "school",
         title: formData.title,
         category: formData.category,
-        priority: "medium",
         description: formData.description,
         organization: formData.organization,
         contactPerson: formData.contactPerson,
@@ -278,10 +252,10 @@ export function ConsultationFormPageNew() {
         scheduledDay,
         scheduledTimeSlot: selectedTimeSlot,
         status: "pending",
+        priority: formData.priority,
         attachmentFileName: attachedFile?.name,
         attachmentDataUrl: attachedDataUrl || undefined,
       });
->>>>>>> Stashed changes
 
       showToast(
         `Konsultasi baru berhasil dibuat dengan ${lecturer.name}! Permintaan Anda sedang menunggu persetujuan Dosen.`,

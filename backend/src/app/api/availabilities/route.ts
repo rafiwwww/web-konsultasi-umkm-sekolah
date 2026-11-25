@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import { getDatabase } from "@/lib/db";
-import { lecturerAvailabilities, lecturers } from "@/db/schema";
+import { consultationBookings, lecturerAvailabilities, lecturers } from "@/db/schema";
 
 const availabilitySchema = z.object({
   lecturerId: z.uuid(),
@@ -58,6 +58,10 @@ export async function DELETE(request: Request) {
   const db = getDatabase();
   const [availability] = await db.select({
     id: lecturerAvailabilities.id,
+    lecturerId: lecturerAvailabilities.lecturerId,
+    semesterId: lecturerAvailabilities.semesterId,
+    dayOfWeek: lecturerAvailabilities.dayOfWeek,
+    timeSlots: lecturerAvailabilities.timeSlots,
     lecturerUserId: lecturers.userId,
   }).from(lecturerAvailabilities)
     .innerJoin(lecturers, eq(lecturerAvailabilities.lecturerId, lecturers.id))
@@ -66,6 +70,21 @@ export async function DELETE(request: Request) {
   if (!availability) return NextResponse.json({ error: "Jadwal tidak ditemukan." }, { status: 404 });
   if (session!.role === "Dosen" && availability.lecturerUserId !== session!.userId) {
     return NextResponse.json({ error: "Anda hanya dapat menghapus jadwal sendiri." }, { status: 403 });
+  }
+  const activeBookings = await db.select({
+    startTime: consultationBookings.startTime,
+    endTime: consultationBookings.endTime,
+  }).from(consultationBookings).where(and(
+    eq(consultationBookings.lecturerId, availability.lecturerId),
+    eq(consultationBookings.semesterId, availability.semesterId),
+    eq(consultationBookings.scheduledDay, availability.dayOfWeek),
+    inArray(consultationBookings.status, ["pending", "accepted", "waiting_zoom", "rescheduled", "scheduled"]),
+  ));
+  const hasActiveBooking = availability.timeSlots.some((slot) => activeBookings.some((booking) =>
+    slot.startTime === booking.startTime && slot.endTime === booking.endTime
+  ));
+  if (hasActiveBooking) {
+    return NextResponse.json({ error: "Jadwal tidak dapat dihapus karena memiliki konsultasi aktif." }, { status: 409 });
   }
   await db.delete(lecturerAvailabilities).where(eq(lecturerAvailabilities.id, id));
   return NextResponse.json({ success: true });

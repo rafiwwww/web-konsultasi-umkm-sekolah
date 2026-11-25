@@ -130,8 +130,7 @@ export function LecturerAvailabilityPage() {
     }
   };
 
-<<<<<<< Updated upstream
-  const handleDeleteAvailability = (id: string, day: string) => {
+  const handleDeleteAvailability = async (id: string, day: string) => {
     const availability = currentAvailabilities.find(a => a.id === id);
     const hasActiveBooking = Boolean(
       availability &&
@@ -159,9 +158,6 @@ export function LecturerAvailabilityPage() {
       return;
     }
 
-=======
-  const handleDeleteAvailability = async (id: string, day: string) => {
->>>>>>> Stashed changes
     if (confirm(`Hapus jadwal untuk hari ${day}?`)) {
       try {
         await deleteAvailability(id);

@@ -70,6 +70,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  authLoading: boolean;
   users: User[];
   login: (email: string, password: string, role: UserRole, name?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -88,12 +89,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
+    let active = true;
     apiRequest<AuthApiResponse>("/api/auth/me")
       .then(data => {
-        if (!data.user) return;
+        if (!active || !data.user) return;
         const restoredUser = toUser(data.user);
         setUser(restoredUser);
         setUsers(prev => prev.some(existing => existing.id === restoredUser.id)
@@ -101,10 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : [...prev, restoredUser]);
       })
       .catch(error => {
-        if (!(error instanceof ApiError && error.status === 401)) {
+        if (active && !(error instanceof ApiError && error.status === 401)) {
           console.error("Gagal memulihkan sesi pengguna:", error);
         }
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
       });
+    return () => { active = false; };
   }, []);
 
   const createUser = (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">): User => {
@@ -214,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        authLoading,
         users,
         login,
         logout,

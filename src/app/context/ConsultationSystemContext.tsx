@@ -1,13 +1,10 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { LECTURER_DATABASE, LecturerIdentity } from "../data/lecturerDatabase";
 import { STUDENT_DATABASE, StudentIdentity } from "../data/studentDatabase";
-<<<<<<< Updated upstream
 import { FACULTY_HIERARCHY } from "../data/facultyHierarchy";
 import type { FacultyEntry, ProdiEntry } from "../data/facultyHierarchy";
-=======
 import { useAuth } from "./AuthContext";
 import { apiRequest } from "../lib/api";
->>>>>>> Stashed changes
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -752,9 +749,9 @@ const INITIAL_STUDENTS: Student[] = [
 // ==================== PROVIDER COMPONENT ====================
 
 export function ConsultationSystemProvider({ children }: { children: ReactNode }) {
-<<<<<<< Updated upstream
-  const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
-  const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>(INITIAL_STUDY_PROGRAMS);
+  const { user } = useAuth();
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
   const [facultyHierarchy, setFacultyHierarchy] = useState<FacultyEntry[]>(() =>
     FACULTY_HIERARCHY.map(faculty => ({
       ...faculty,
@@ -767,13 +764,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
       })),
     })),
   );
-  const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
-=======
-  const { user } = useAuth();
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
->>>>>>> Stashed changes
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [lecturerAvailabilities, setLecturerAvailabilities] = useState<LecturerAvailability[]>([]);
   const [consultationBookings, setConsultationBookings] = useState<ConsultationBooking[]>([]);
