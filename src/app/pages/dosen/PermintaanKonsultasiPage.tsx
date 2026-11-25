@@ -262,15 +262,19 @@ export function PermintaanKonsultasiPage() {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleBulkAcceptConfirm = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    bulkAcceptAnalysis.canAccept.forEach((r) => acceptBookingWithSession(r.id));
-    setIsLoading(false);
-    setBulkAcceptOpen(false);
-    clearSelection();
-    showToast(
-      `${bulkAcceptAnalysis.canAccept.length} permintaan diterima. Admin akan segera membuat Zoom meeting.`,
-      "success"
-    );
+    try {
+      await Promise.all(bulkAcceptAnalysis.canAccept.map((r) => acceptBookingWithSession(r.id)));
+      setBulkAcceptOpen(false);
+      clearSelection();
+      showToast(
+        `${bulkAcceptAnalysis.canAccept.length} permintaan diterima. Admin akan segera membuat Zoom meeting.`,
+        "success"
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Permintaan gagal diperbarui.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSingleAccept = async (bookingId: string, userName: string) => {
@@ -288,11 +292,15 @@ export function PermintaanKonsultasiPage() {
       );
       return;
     }
-    acceptBookingWithSession(bookingId);
-    showToast(
-      `Konsultasi dari ${userName} diterima. Admin akan segera membuat Zoom meeting.`,
-      "success"
-    );
+    try {
+      await acceptBookingWithSession(bookingId);
+      showToast(
+        `Konsultasi dari ${userName} diterima. Admin akan segera membuat Zoom meeting.`,
+        "success"
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Permintaan gagal diperbarui.", "error");
+    }
   };
 
   const openReschedule = (ids?: Set<string>) => {
@@ -321,27 +329,29 @@ export function PermintaanKonsultasiPage() {
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-
     const targets = allRequests.filter(
       (r) => selectedIds.has(r.id) && r.status === "pending"
     );
-    targets.forEach((r) => {
-      updateBookingStatus(r.id, "rescheduled", {
+    try {
+      await Promise.all(targets.map((r) =>
+        updateBookingStatus(r.id, "rescheduled", {
         scheduledDate: rescheduleDate,
         scheduledDay: rescheduleDay,
         scheduledTimeSlot: rescheduleSlot,
         rescheduleNote: rescheduleNote || "Dosen telah mengusulkan jadwal baru.",
-      });
-    });
-
-    setIsLoading(false);
-    setRescheduleOpen(false);
-    clearSelection();
-    showToast(
-      `${targets.length} permintaan telah dijadwalkan ulang. Peserta akan melihat jadwal baru.`,
-      "success"
-    );
+        })
+      ));
+      setRescheduleOpen(false);
+      clearSelection();
+      showToast(
+        `${targets.length} permintaan telah dijadwalkan ulang. Peserta akan melihat jadwal baru.`,
+        "success"
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Permintaan gagal dijadwalkan ulang.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ── Display helpers ───────────────────────────────────────────────────────

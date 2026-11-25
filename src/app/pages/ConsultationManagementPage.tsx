@@ -20,10 +20,14 @@ export function ConsultationManagementPage() {
     ? getBookingsByUser(user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     : [];
 
-  const handleCancelConsultation = (id: string, title: string) => {
+  const handleCancelConsultation = async (id: string, title: string) => {
     if (confirm(`Batalkan konsultasi "${title}"?`)) {
-      updateBookingStatus(id, "cancelled");
-      showToast("Konsultasi berhasil dibatalkan", "warning");
+      try {
+        await updateBookingStatus(id, "cancelled");
+        showToast("Konsultasi berhasil dibatalkan", "warning");
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Konsultasi gagal dibatalkan.", "error");
+      }
     }
   };
 

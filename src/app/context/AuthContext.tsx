@@ -1,8 +1,39 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { LECTURER_DATABASE, findLecturerByEmail } from "../data/lecturerDatabase";
 import { STUDENT_DATABASE, findStudentByEmail } from "../data/studentDatabase";
+import { ApiError, apiRequest } from "../lib/api";
 
 export type UserRole = "Admin" | "Dosen" | "UMKM" | "Siswa" | "Guru" | null;
+
+interface AuthApiResponse {
+  user?: Partial<User> & Pick<User, "id" | "name" | "email" | "role" | "createdAt">;
+  error?: string;
+}
+
+function toUser(apiUser: NonNullable<AuthApiResponse["user"]>): User {
+  return {
+    ...apiUser,
+    avatar: apiUser.avatar || getAvatarInitialsFromName(apiUser.name),
+    role: apiUser.role,
+    createdAt: apiUser.createdAt,
+    lastLogin: apiUser.lastLogin || new Date().toISOString(),
+  };
+}
+
+async function postAuth(path: string, payload?: Record<string, unknown>) {
+  try {
+    const data = await apiRequest<AuthApiResponse>(`/api/auth/${path}`, {
+      method: "POST",
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+    return { success: true as const, user: data.user ? toUser(data.user) : undefined };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Permintaan autentikasi gagal.",
+    };
+  }
+}
 
 export interface User {
   id: string;
@@ -40,11 +71,11 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (email: string, password: string, role: UserRole, name?: string) => { success: boolean; error?: string };
+  login: (email: string, password: string, role: UserRole, name?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfilePicture: (url: string | null) => void;
   updateProfile: (updates: Partial<User>) => void;
-  register: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">, password: string) => { success: boolean; error?: string };
+  register: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">, password: string) => Promise<{ success: boolean; error?: string }>;
   createUser: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">) => User;
   updateUser: (userId: string, updates: Partial<User>) => void;
   deleteUser: (userId: string) => void;
@@ -58,6 +89,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    apiRequest<AuthApiResponse>("/api/auth/me")
+      .then(data => {
+        if (!data.user) return;
+        const restoredUser = toUser(data.user);
+        setUser(restoredUser);
+        setUsers(prev => prev.some(existing => existing.id === restoredUser.id)
+          ? prev.map(existing => existing.id === restoredUser.id ? restoredUser : existing)
+          : [...prev, restoredUser]);
+      })
+      .catch(error => {
+        if (!(error instanceof ApiError && error.status === 401)) {
+          console.error("Gagal memulihkan sesi pengguna:", error);
+        }
+      });
+  }, []);
 
   const createUser = (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">): User => {
     const newUser: User = {
@@ -108,64 +156,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return users.filter(u => u.role === role);
   };
 
-  const register = (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">, password: string): { success: boolean; error?: string } => {
+  const register = async (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!password || password.length < 8) {
       return { success: false, error: "Kata sandi minimal 8 karakter." };
     }
-    const existing = users.find(u => u.email === userData.email && u.role === userData.role);
-    if (existing) {
-      return { success: false, error: "Email sudah terdaftar untuk jenis pengguna ini." };
-    }
-    const newUser: User = {
-      ...userData,
+    if (!userData.role) return { success: false, error: "Silakan pilih jenis pengguna." };
+
+    const result = await postAuth("register", {
+      name: userData.name,
+      email: userData.email,
       password,
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      avatar: getAvatarInitialsFromName(userData.name),
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-      status: "Active",
-    };
-    setUsers(prev => [...prev, newUser]);
+      role: userData.role,
+      phone: userData.phone,
+      organization: userData.organization || userData.businessName || userData.schoolName,
+    });
+    if (!result.success) return result;
+    if (result.user) setUsers(prev => [...prev.filter(existing => existing.id !== result.user!.id), result.user!]);
     return { success: true };
   };
 
-  const login = (email: string, password: string, role: UserRole, name?: string): { success: boolean; error?: string } => {
-    // Try to find existing user first
-    let existingUser = users.find(u => u.email === email && u.role === role);
+  const login = async (email: string, password: string, role: UserRole, _name?: string): Promise<{ success: boolean; error?: string }> => {
+    const result = await postAuth("login", { email, password, ...(role ? { role } : {}) });
+    if (!result.success) return result;
+    if (!result.user) return { success: false, error: "Backend tidak mengembalikan data akun." };
 
-    if (existingUser) {
-      // Registered users have a stored password — validate password and name
-      if (existingUser.password) {
-        if (existingUser.password !== password) {
-          return { success: false, error: "Kata sandi salah." };
-        }
-        if (name && existingUser.name.trim().toLowerCase() !== name.trim().toLowerCase()) {
-          return { success: false, error: "Nama lengkap tidak sesuai." };
-        }
-      }
-    } else {
-      // Mock login - create user on the fly for demo
-      existingUser = {
-        id: getMockIdByEmail(email, role),
-        name: getMockNameByEmail(email, role),
-        email: email,
-        role: role,
-        avatar: getAvatarInitials(role, email),
-        phone: getMockPhoneByRole(role),
-        status: "Active",
-        createdAt: getMockCreatedAtByRole(role),
-        lastLogin: new Date().toISOString(),
-        ...getRoleSpecificFields(role, email),
-      };
-      setUsers(prev => [...prev, existingUser!]);
-    }
-
-    setUser(existingUser);
+    const loggedInUser = result.user;
+    setUser(loggedInUser);
+    setUsers(prev => [...prev.filter(existing => existing.id !== loggedInUser.id), loggedInUser]);
     return { success: true };
   };
 
   const logout = () => {
     setUser(null);
+    void postAuth("logout");
   };
 
   const updateProfilePicture = (url: string | null) => {

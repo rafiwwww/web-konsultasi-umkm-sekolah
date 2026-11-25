@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { asc, eq } from "drizzle-orm";
+import { getDatabase } from "@/lib/db";
+import { lecturers, studyPrograms } from "@/db/schema";
 
 export async function GET() {
-  const lecturers = await prisma.lecturer.findMany({
-    include: { studyProgram: true },
-    orderBy: { name: "asc" },
-  });
-  return NextResponse.json({ lecturers });
+  const rows = await getDatabase().select({
+    lecturer: lecturers,
+    studyProgram: studyPrograms,
+  }).from(lecturers)
+    .leftJoin(studyPrograms, eq(lecturers.studyProgramId, studyPrograms.id))
+    .orderBy(asc(lecturers.name));
+  return NextResponse.json({ lecturers: rows.map((row) => ({ ...row.lecturer, studyProgram: row.studyProgram })) });
 }

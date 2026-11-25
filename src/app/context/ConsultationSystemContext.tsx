@@ -1,8 +1,13 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { LECTURER_DATABASE, LecturerIdentity } from "../data/lecturerDatabase";
 import { STUDENT_DATABASE, StudentIdentity } from "../data/studentDatabase";
+<<<<<<< Updated upstream
 import { FACULTY_HIERARCHY } from "../data/facultyHierarchy";
 import type { FacultyEntry, ProdiEntry } from "../data/facultyHierarchy";
+=======
+import { useAuth } from "./AuthContext";
+import { apiRequest } from "../lib/api";
+>>>>>>> Stashed changes
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -195,16 +200,16 @@ interface ConsultationSystemContextType {
   deleteStudent: (id: string) => void;
   
   // Lecturer availability management
-  createAvailability: (availability: Omit<LecturerAvailability, "id" | "createdAt">) => void;
+  createAvailability: (availability: Omit<LecturerAvailability, "id" | "createdAt">) => Promise<void>;
   updateAvailability: (id: string, updates: Partial<LecturerAvailability>) => void;
-  deleteAvailability: (id: string) => void;
+  deleteAvailability: (id: string) => Promise<void>;
   getAvailabilityByLecturer: (lecturerId: string, semesterId: string) => LecturerAvailability[];
   getAvailableSlotsForDate: (lecturerId: string, date: string) => TimeSlot[];
   getSlotQuotaInfo: (lecturerId: string, date: string, startTime: string, endTime: string) => { accepted: number; remaining: number; isFull: boolean };
 
   // Consultation booking management
-  createBooking: (booking: Omit<ConsultationBooking, "id" | "createdAt" | "updatedAt">) => string;
-  updateBookingStatus: (id: string, status: ConsultationBooking["status"], additionalData?: Partial<ConsultationBooking>) => void;
+  createBooking: (booking: Omit<ConsultationBooking, "id" | "createdAt" | "updatedAt">) => Promise<string>;
+  updateBookingStatus: (id: string, status: ConsultationBooking["status"], additionalData?: Partial<ConsultationBooking>) => Promise<void>;
   getBookingsByUser: (userId: string) => ConsultationBooking[];
   getBookingsByLecturer: (lecturerId: string) => ConsultationBooking[];
   isSlotAvailable: (lecturerId: string, date: string, timeSlot: TimeSlot) => boolean;
@@ -216,7 +221,7 @@ interface ConsultationSystemContextType {
   // Session management
   consultationSessions: ConsultationSession[];
   activityLogs: ActivityLog[];
-  acceptBookingWithSession: (bookingId: string, adminId?: string) => void;
+  acceptBookingWithSession: (bookingId: string, adminId?: string) => Promise<void>;
   confirmZoomMeeting: (sessionId: string, zoomLink: string, notes: string, adminId: string) => void;
   updateSessionZoomLink: (sessionId: string, zoomLink: string, adminId: string) => void;
   getWaitingZoomSessions: () => ConsultationSession[];
@@ -228,6 +233,23 @@ interface ConsultationSystemContextType {
 }
 
 const ConsultationSystemContext = createContext<ConsultationSystemContextType | undefined>(undefined);
+
+interface ConsultationApiResponse {
+  semesters?: Semester[];
+  studyPrograms?: StudyProgram[];
+  lecturers?: (Lecturer & { studyProgram?: StudyProgram | null; studyProgramId: string | null })[];
+  availabilities?: (Omit<LecturerAvailability, "timeSlots"> & {
+    timeSlots: { id?: string; startTime: string; endTime: string }[];
+  })[];
+  bookings?: (Omit<ConsultationBooking, "scheduledDate" | "scheduledTimeSlot"> & {
+    scheduledDate: string;
+    startTime: string;
+    endTime: string;
+    scheduledTimeSlot?: Omit<TimeSlot, "id"> & { id?: string };
+  })[];
+  booking?: ConsultationBooking;
+  availability?: LecturerAvailability;
+}
 
 // ==================== INITIAL MOCK DATA ====================
 
@@ -730,6 +752,7 @@ const INITIAL_STUDENTS: Student[] = [
 // ==================== PROVIDER COMPONENT ====================
 
 export function ConsultationSystemProvider({ children }: { children: ReactNode }) {
+<<<<<<< Updated upstream
   const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
   const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>(INITIAL_STUDY_PROGRAMS);
   const [facultyHierarchy, setFacultyHierarchy] = useState<FacultyEntry[]>(() =>
@@ -745,11 +768,65 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     })),
   );
   const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
+=======
+  const { user } = useAuth();
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
+  const [lecturers, setLecturers] = useState<Lecturer[]>([]);
+>>>>>>> Stashed changes
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [lecturerAvailabilities, setLecturerAvailabilities] = useState<LecturerAvailability[]>([]);
   const [consultationBookings, setConsultationBookings] = useState<ConsultationBooking[]>([]);
   const [consultationSessions, setConsultationSessions] = useState<ConsultationSession[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const loadCoreData = async () => {
+      try {
+        const [semesterData, programData, lecturerData, availabilityData, bookingData] = await Promise.all([
+          apiRequest<ConsultationApiResponse>("/api/semesters"),
+          apiRequest<ConsultationApiResponse>("/api/study-programs"),
+          apiRequest<ConsultationApiResponse>("/api/lecturers"),
+          apiRequest<ConsultationApiResponse>("/api/availabilities"),
+          user ? apiRequest<ConsultationApiResponse>("/api/consultations") : Promise.resolve({ bookings: [] }),
+        ]);
+        if (!active) return;
+        setSemesters((semesterData.semesters ?? []).map(semester => ({
+          ...semester,
+          startDate: semester.startDate.slice(0, 10),
+          endDate: semester.endDate.slice(0, 10),
+        })));
+        setStudyPrograms(programData.studyPrograms ?? []);
+        setLecturers((lecturerData.lecturers ?? []).map(lecturer => ({
+          ...lecturer,
+          studyProgramId: lecturer.studyProgramId ?? "",
+        })));
+        setLecturerAvailabilities((availabilityData.availabilities ?? []).map(availability => ({
+          ...availability,
+          timeSlots: availability.timeSlots.map((slot, index) => ({
+            ...slot,
+            id: slot.id || `${availability.id}-${index}`,
+          })),
+        })));
+        setConsultationBookings((bookingData.bookings ?? []).map(booking => ({
+          ...booking,
+          scheduledDate: booking.scheduledDate.slice(0, 10),
+          scheduledTimeSlot: {
+            ...(booking.scheduledTimeSlot ?? {
+              startTime: booking.startTime,
+              endTime: booking.endTime,
+            }),
+            id: booking.scheduledTimeSlot?.id || `${booking.id}-slot`,
+          },
+        })));
+      } catch (error) {
+        if (active) console.error("Gagal memuat data konsultasi dari backend:", error);
+      }
+    };
+    void loadCoreData();
+    return () => { active = false; };
+  }, [user]);
 
   // Get active semester
   const activeSemester = semesters.find(s => s.isActive) || null;
@@ -916,20 +993,32 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
   // ==================== LECTURER AVAILABILITY MANAGEMENT ====================
 
-  const createAvailability = (availability: Omit<LecturerAvailability, "id" | "createdAt">) => {
-    const newAvailability: LecturerAvailability = {
-      ...availability,
-      id: `avail-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setLecturerAvailabilities(prev => [...prev, newAvailability]);
+  const createAvailability = async (availability: Omit<LecturerAvailability, "id" | "createdAt">) => {
+    const data = await apiRequest<ConsultationApiResponse>("/api/availabilities", {
+      method: "POST",
+      body: JSON.stringify(availability),
+    });
+    const savedAvailability = data.availability;
+    if (!savedAvailability) throw new Error("Backend tidak mengembalikan data jadwal.");
+    setLecturerAvailabilities(prev => [
+      ...prev.filter(item => !(item.lecturerId === availability.lecturerId &&
+        item.semesterId === availability.semesterId && item.dayOfWeek === availability.dayOfWeek)),
+      {
+        ...savedAvailability,
+        timeSlots: savedAvailability.timeSlots.map((slot, index) => ({
+          ...slot,
+          id: slot.id || `${savedAvailability.id}-${index}`,
+        })),
+      },
+    ]);
   };
 
   const updateAvailability = (id: string, updates: Partial<LecturerAvailability>) => {
     setLecturerAvailabilities(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
-  const deleteAvailability = (id: string) => {
+  const deleteAvailability = async (id: string) => {
+    await apiRequest(`/api/availabilities?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     setLecturerAvailabilities(prev => prev.filter(a => a.id !== id));
   };
 
@@ -965,7 +1054,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
     const dateObj = new Date(date);
     const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-    const dayOfWeek = dayNames[dateObj.getDay()];
+    const dayOfWeek = dayNames[dateObj.getUTCDay()];
 
     const availability = lecturerAvailabilities.find(
       a => a.lecturerId === lecturerId &&
@@ -985,29 +1074,71 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
   // ==================== CONSULTATION BOOKING MANAGEMENT ====================
 
-  const createBooking = (booking: Omit<ConsultationBooking, "id" | "createdAt" | "updatedAt">): string => {
+  const createBooking = async (booking: Omit<ConsultationBooking, "id" | "createdAt" | "updatedAt">): Promise<string> => {
+    const data = await apiRequest<ConsultationApiResponse>("/api/consultations", {
+      method: "POST",
+      body: JSON.stringify({
+        lecturerId: booking.lecturerId,
+        semesterId: booking.semesterId,
+        consultationType: booking.consultationType,
+        title: booking.title,
+        category: booking.category,
+        priority: booking.priority,
+        description: booking.description,
+        organization: booking.organization,
+        contactPerson: booking.contactPerson,
+        phone: booking.phone,
+        email: booking.email,
+        scheduledDate: booking.scheduledDate,
+        scheduledDay: booking.scheduledDay,
+        scheduledTimeSlot: booking.scheduledTimeSlot,
+        attachmentFileName: booking.attachmentFileName,
+      }),
+    });
+    if (!data.booking) throw new Error("Backend tidak mengembalikan data konsultasi.");
     const newBooking: ConsultationBooking = {
       ...booking,
-      id: `booking-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      ...data.booking,
+      scheduledDate: data.booking.scheduledDate.slice(0, 10),
+      scheduledTimeSlot: {
+        ...data.booking.scheduledTimeSlot,
+        id: data.booking.scheduledTimeSlot.id || `${data.booking.id}-slot`,
+      },
     };
     setConsultationBookings(prev => [...prev, newBooking]);
     return newBooking.id;
   };
 
-  const updateBookingStatus = (
+  const updateBookingStatus = async (
     id: string, 
     status: ConsultationBooking["status"], 
     additionalData?: Partial<ConsultationBooking>
-  ) => {
+  ): Promise<void> => {
+    const patch: Record<string, unknown> = {
+      status,
+      ...(additionalData?.zoomLink !== undefined ? { zoomLink: additionalData.zoomLink } : {}),
+      ...(additionalData?.rescheduleNote !== undefined ? { rescheduleNote: additionalData.rescheduleNote } : {}),
+      ...(additionalData?.feedback !== undefined ? { feedback: additionalData.feedback } : {}),
+      ...(additionalData?.rating !== undefined ? { rating: additionalData.rating } : {}),
+      ...(additionalData?.scheduledDate !== undefined ? { scheduledDate: additionalData.scheduledDate } : {}),
+      ...(additionalData?.scheduledDay !== undefined ? { scheduledDay: additionalData.scheduledDay } : {}),
+      ...(additionalData?.scheduledTimeSlot !== undefined ? { scheduledTimeSlot: additionalData.scheduledTimeSlot } : {}),
+    };
+    const data = await apiRequest<ConsultationApiResponse>(`/api/consultations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    if (!data.booking) throw new Error("Backend tidak mengembalikan data konsultasi.");
     setConsultationBookings(prev => prev.map(b => 
       b.id === id 
         ? { 
-            ...b, 
-            status, 
-            updatedAt: new Date().toISOString(),
-            ...(status === "completed" && { completedAt: new Date().toISOString() }),
+            ...b,
+            ...data.booking,
+            scheduledDate: data.booking!.scheduledDate.slice(0, 10),
+            scheduledTimeSlot: {
+              ...data.booking!.scheduledTimeSlot,
+              id: data.booking!.scheduledTimeSlot.id || `${data.booking!.id}-slot`,
+            },
             ...additionalData,
           } 
         : b
@@ -1040,9 +1171,10 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
   const getSessionKey = (lecturerId: string, scheduledDate: string, timeSlot: TimeSlot) =>
     `${lecturerId}__${scheduledDate}__${timeSlot.startTime}-${timeSlot.endTime}`;
 
-  const acceptBookingWithSession = (bookingId: string) => {
+  const acceptBookingWithSession = async (bookingId: string) => {
     const booking = consultationBookings.find(b => b.id === bookingId);
     if (!booking) return;
+    await updateBookingStatus(bookingId, "waiting_zoom");
 
     const key = getSessionKey(booking.lecturerId, booking.scheduledDate, booking.scheduledTimeSlot);
 

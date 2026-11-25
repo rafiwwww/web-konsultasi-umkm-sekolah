@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { asc } from "drizzle-orm";
+import { getDatabase } from "@/lib/db";
+import { studyPrograms } from "@/db/schema";
 
 export async function GET() {
-  const studyPrograms = await prisma.studyProgram.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json({ studyPrograms });
+  const rows = await getDatabase().select().from(studyPrograms).orderBy(asc(studyPrograms.name));
+  return NextResponse.json({ studyPrograms: rows });
 }

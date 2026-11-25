@@ -95,19 +95,27 @@ export function JadwalKonsultasiPage() {
     return new Date(dateString).toDateString() === today.toDateString();
   };
 
-  const handleMarkSessionCompleted = (sg: typeof sessionGroups[0]) => {
+  const handleMarkSessionCompleted = async (sg: typeof sessionGroups[0]) => {
     if (confirm(`Tandai sesi ${sg.startTime}–${sg.endTime} pada ${sg.scheduledDate} sebagai selesai?`)) {
-      sg.bookings.filter(b => b.status === "scheduled").forEach(b =>
-        updateBookingStatus(b.id, "completed")
-      );
-      showToast("Sesi berhasil ditandai sebagai selesai", "success");
+      try {
+        await Promise.all(sg.bookings.filter(b => b.status === "scheduled").map(b =>
+          updateBookingStatus(b.id, "completed")
+        ));
+        showToast("Sesi berhasil ditandai sebagai selesai", "success");
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Sesi gagal diperbarui.", "error");
+      }
     }
   };
 
-  const handleCancelSession = (sg: typeof sessionGroups[0]) => {
+  const handleCancelSession = async (sg: typeof sessionGroups[0]) => {
     if (confirm(`Batalkan sesi ${sg.startTime}–${sg.endTime} pada ${sg.scheduledDate}?`)) {
-      sg.bookings.forEach(b => updateBookingStatus(b.id, "cancelled"));
-      showToast("Sesi berhasil dibatalkan", "success");
+      try {
+        await Promise.all(sg.bookings.map(b => updateBookingStatus(b.id, "cancelled")));
+        showToast("Sesi berhasil dibatalkan", "success");
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Sesi gagal dibatalkan.", "error");
+      }
     }
   };
 

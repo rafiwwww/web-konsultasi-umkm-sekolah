@@ -2,14 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
   const origin = request.headers.get("origin");
-  const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173")
+  const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:5173,http://127.0.0.1:5173")
     .split(",")
     .map((value) => value.trim());
+  const isSameHostViteOrigin = Boolean(origin) && (() => {
+    try {
+      const originUrl = new URL(origin!);
+      return originUrl.hostname === request.nextUrl.hostname && originUrl.port === "5173";
+    } catch {
+      return false;
+    }
+  })();
   const response = request.method === "OPTIONS"
     ? new NextResponse(null, { status: 204 })
     : NextResponse.next();
 
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || isSameHostViteOrigin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");

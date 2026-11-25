@@ -23,6 +23,7 @@ export function RegisterPage() {
   });
 
   const [passwordError, setPasswordError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update userType when roleParam changes
   useEffect(() => {
@@ -33,7 +34,7 @@ export function RegisterPage() {
     }
   }, [roleParam]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
@@ -45,26 +46,31 @@ export function RegisterPage() {
       return;
     }
 
-    const result = register(
-      {
-        name: formData.name,
-        email: formData.email,
-        role: formData.userType as any,
-        phone: formData.phone,
-        organization: formData.userType === "UMKM" ? formData.organization : undefined,
-        schoolName: formData.userType !== "UMKM" ? formData.organization : undefined,
-        status: "Active",
-      },
-      formData.password
-    );
+    setIsSubmitting(true);
+    try {
+      const result = await register(
+        {
+          name: formData.name,
+          email: formData.email,
+          role: formData.userType as any,
+          phone: formData.phone,
+          organization: formData.userType === "UMKM" ? formData.organization : undefined,
+          schoolName: formData.userType !== "UMKM" ? formData.organization : undefined,
+          status: "Active",
+        },
+        formData.password
+      );
 
-    if (!result.success) {
-      setPasswordError(result.error || "Pendaftaran gagal. Silakan coba lagi.");
-      return;
+      if (!result.success) {
+        setPasswordError(result.error || "Pendaftaran gagal. Silakan coba lagi.");
+        return;
+      }
+
+      showToast("Akun berhasil disimpan. Silakan masuk dengan email dan kata sandi Anda.", "success");
+      setTimeout(() => navigate("/login"), 1500);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    showToast("Akun berhasil dibuat. Silakan masuk dengan email dan kata sandi Anda.", "success");
-    setTimeout(() => navigate("/login"), 1500);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -268,10 +274,10 @@ export function RegisterPage() {
 
             <button
               type="submit"
-              disabled={!!(formData.confirmPassword && formData.password !== formData.confirmPassword)}
+              disabled={isSubmitting || !!(formData.confirmPassword && formData.password !== formData.confirmPassword)}
               className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Daftar
+              {isSubmitting ? "Menyimpan akun..." : "Daftar"}
             </button>
           </form>
 

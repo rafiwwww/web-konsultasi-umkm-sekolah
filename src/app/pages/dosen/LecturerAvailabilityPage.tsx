@@ -91,7 +91,7 @@ export function LecturerAvailabilityPage() {
     }
   };
 
-  const handleSaveAvailability = () => {
+  const handleSaveAvailability = async () => {
     if (!selectedDay) {
       showToast("Pilih hari terlebih dahulu", "warning");
       return;
@@ -114,19 +114,23 @@ export function LecturerAvailabilityPage() {
       return;
     }
 
-    createAvailability({
-      lecturerId: currentLecturer.id,
-      semesterId: activeSemester.id,
-      dayOfWeek: selectedDay,
-      timeSlots: selectedSlots,
-      isActive: true,
-    });
-
-    showToast(`Jadwal untuk hari ${selectedDay} berhasil ditambahkan`, "success");
-    setSelectedDay("");
-    setSelectedSlots([]);
+    try {
+      await createAvailability({
+        lecturerId: currentLecturer.id,
+        semesterId: activeSemester.id,
+        dayOfWeek: selectedDay,
+        timeSlots: selectedSlots,
+        isActive: true,
+      });
+      showToast(`Jadwal untuk hari ${selectedDay} berhasil ditambahkan`, "success");
+      setSelectedDay("");
+      setSelectedSlots([]);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Jadwal gagal disimpan.", "error");
+    }
   };
 
+<<<<<<< Updated upstream
   const handleDeleteAvailability = (id: string, day: string) => {
     const availability = currentAvailabilities.find(a => a.id === id);
     const hasActiveBooking = Boolean(
@@ -155,9 +159,16 @@ export function LecturerAvailabilityPage() {
       return;
     }
 
+=======
+  const handleDeleteAvailability = async (id: string, day: string) => {
+>>>>>>> Stashed changes
     if (confirm(`Hapus jadwal untuk hari ${day}?`)) {
-      deleteAvailability(id);
-      showToast("Jadwal berhasil dihapus", "success");
+      try {
+        await deleteAvailability(id);
+        showToast("Jadwal berhasil dihapus", "success");
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Jadwal gagal dihapus.", "error");
+      }
     }
   };
 

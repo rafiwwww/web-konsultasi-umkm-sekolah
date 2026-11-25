@@ -10,18 +10,24 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("UMKM");
   const [loginError, setLoginError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
-    const result = login(email, password, role, name.trim() || undefined);
-    if (!result || result.success === false) {
-      setLoginError(result?.error || "Email, nama, atau kata sandi tidak sesuai. Silakan coba lagi.");
-      return;
+    setIsSubmitting(true);
+    try {
+      const result = await login(email, password, role, name.trim() || undefined);
+      if (!result.success) {
+        setLoginError(result.error || "Email atau kata sandi tidak sesuai. Silakan coba lagi.");
+        return;
+      }
+      navigate("/dashboard");
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate("/dashboard");
   };
 
   return (
@@ -112,9 +118,10 @@ export function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-60 disabled:cursor-wait"
             >
-              Masuk
+              {isSubmitting ? "Memeriksa akun..." : "Masuk"}
             </button>
           </form>
 

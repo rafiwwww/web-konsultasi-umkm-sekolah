@@ -8,7 +8,7 @@ import { useSeminars } from "../../context/SeminarContext";
 export function KelolaSeminarPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { seminars, updateSeminar, deleteSeminar } = useSeminars();
+  const { seminars, updateSeminar } = useSeminars();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedSeminar, setSelectedSeminar] = useState<any>(null);
@@ -40,14 +40,15 @@ export function KelolaSeminarPage() {
 
   const handleSaveEdit = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    updateSeminar(selectedSeminar.id, editForm);
-
-    setIsLoading(false);
-    setEditModalOpen(false);
-    showToast("Seminar updated successfully", "success");
+    try {
+      await updateSeminar(selectedSeminar.id, editForm);
+      setEditModalOpen(false);
+      showToast("Seminar updated successfully", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Seminar gagal diperbarui.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancelClick = (seminar: any) => {
@@ -57,17 +58,15 @@ export function KelolaSeminarPage() {
 
   const handleConfirmCancel = async () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    updateSeminar(selectedSeminar.id, {
-      ...selectedSeminar,
-      status: "Cancelled",
-      participants: 0,
-    });
-
-    setIsLoading(false);
-    setCancelModalOpen(false);
-    showToast("Seminar has been cancelled", "warning");
+    try {
+      await updateSeminar(selectedSeminar.id, { status: "Cancelled" });
+      setCancelModalOpen(false);
+      showToast("Seminar has been cancelled", "warning");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Seminar gagal dibatalkan.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {

@@ -23,6 +23,7 @@ export function BuatSeminarPage() {
   });
 
   const [posterPreview, setPosterPreview] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Redirect if not Admin (Dosen can NO LONGER create seminars)
   if (!user || user.role !== "Admin") {
@@ -61,7 +62,7 @@ export function BuatSeminarPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Basic validation
@@ -71,9 +72,7 @@ export function BuatSeminarPage() {
     }
 
     // Parse dateTime into eventDate and eventTime
-    const dateTimeObj = new Date(formData.dateTime);
-    const eventDate = dateTimeObj.toISOString().split('T')[0];
-    const eventTime = dateTimeObj.toTimeString().slice(0, 5);
+    const [eventDate, eventTime] = formData.dateTime.split("T");
 
     // Transform form data to match Seminar interface
     const seminarData = {
@@ -93,15 +92,16 @@ export function BuatSeminarPage() {
     };
 
     // Add seminar to context
-    createSeminar(seminarData);
-
-    // Show success toast notification
-    showToast("Seminar successfully created", "success");
-
-    // Redirect after a short delay
-    setTimeout(() => {
+    setIsSaving(true);
+    try {
+      await createSeminar(seminarData);
+      showToast("Seminar successfully created", "success");
       navigate("/admin/seminars");
-    }, 1500);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Seminar gagal disimpan.", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -296,11 +296,11 @@ export function BuatSeminarPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Draft">Draft</option>
-                  <option value="Active">Active</option>
+                  <option value="Published">Published</option>
                 </select>
                 <p className="mt-2 text-sm text-gray-500">
                   <span className="font-medium">Draft:</span> Tidak terlihat publik &nbsp;|&nbsp; 
-                  <span className="font-medium">Active:</span> Terlihat oleh pengguna
+                  <span className="font-medium">Published:</span> Terlihat oleh pengguna
                 </p>
               </div>
             </div>
@@ -316,9 +316,10 @@ export function BuatSeminarPage() {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                disabled={isSaving}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                Simpan Seminar
+                {isSaving ? "Menyimpan..." : "Simpan Seminar"}
               </button>
             </div>
           </form>

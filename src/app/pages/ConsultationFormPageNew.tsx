@@ -185,7 +185,7 @@ export function ConsultationFormPageNew() {
   }, [selectedLecturerId, selectedDate, getAvailableSlotsForDate]);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedLecturerId) {
@@ -230,8 +230,9 @@ export function ConsultationFormPageNew() {
 
     const dateObj = new Date(selectedDate);
     const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-    const scheduledDay = dayNames[dateObj.getDay()];
+    const scheduledDay = dayNames[dateObj.getUTCDay()];
 
+<<<<<<< Updated upstream
     createBooking({
       userId,
       userName: user.name || "User",
@@ -255,12 +256,41 @@ export function ConsultationFormPageNew() {
       attachmentFileName: attachedFile?.name,
       attachmentDataUrl: attachedDataUrl || undefined,
     });
+=======
+    try {
+      await createBooking({
+        userId,
+        userName: user.name || "User",
+        userRole: user.role || "UMKM",
+        lecturerId: selectedLecturerId,
+        lecturerName: lecturer.name,
+        semesterId: activeSemester.id,
+        consultationType: formData.consultationType === "umkm" ? "umkm" : "school",
+        title: formData.title,
+        category: formData.category,
+        priority: "medium",
+        description: formData.description,
+        organization: formData.organization,
+        contactPerson: formData.contactPerson,
+        phone: formData.phone,
+        email: formData.email,
+        scheduledDate: selectedDate,
+        scheduledDay,
+        scheduledTimeSlot: selectedTimeSlot,
+        status: "pending",
+        attachmentFileName: attachedFile?.name,
+        attachmentDataUrl: attachedDataUrl || undefined,
+      });
+>>>>>>> Stashed changes
 
-    showToast(
-      `Konsultasi baru berhasil dibuat dengan ${lecturer.name}! Permintaan Anda sedang menunggu persetujuan Dosen.`,
-      "success"
-    );
-    navigate("/consultation/manage");
+      showToast(
+        `Konsultasi baru berhasil dibuat dengan ${lecturer.name}! Permintaan Anda sedang menunggu persetujuan Dosen.`,
+        "success"
+      );
+      navigate("/consultation/manage");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Konsultasi gagal disimpan.", "error");
+    }
   };
 
   const handleChange = (
