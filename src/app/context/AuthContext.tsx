@@ -53,6 +53,9 @@ export interface User {
   lecturerId?: string;
   lecturerCode?: string;
   specialization?: string;
+  university?: string;
+  expertise?: string[];
+  studyProgramId?: string;
   bio?: string;
   totalConsultations?: number;
   totalSeminars?: number;
@@ -77,7 +80,7 @@ interface AuthContextType {
   updateProfilePicture: (url: string | null) => void;
   updateProfile: (updates: Partial<User>) => void;
   register: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">, password: string) => Promise<{ success: boolean; error?: string }>;
-  createUser: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">) => User;
+  createUser: (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">) => Promise<User>;
   updateUser: (userId: string, updates: Partial<User>) => void;
   deleteUser: (userId: string) => void;
   getUserById: (userId: string) => User | undefined;
@@ -114,18 +117,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  const createUser = (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">): User => {
-    const newUser: User = {
-      ...userData,
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      avatar: getAvatarInitialsFromName(userData.name),
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-      status: userData.status || "Active",
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    return newUser;
+  const createUser = async (userData: Omit<User, "id" | "avatar" | "createdAt" | "lastLogin">): Promise<User> => {
+    const data = await apiRequest<AuthApiResponse>("/api/users", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
+    if (!data.user) throw new Error("Backend tidak mengembalikan data pengguna.");
+    const createdUser = toUser(data.user);
+    setUsers(prev => [...prev.filter(existing => existing.id !== createdUser.id), createdUser]);
+    return createdUser;
   };
 
   const updateUser = (userId: string, updates: Partial<User>) => {

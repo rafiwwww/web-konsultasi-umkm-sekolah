@@ -90,6 +90,7 @@ Jika Docker Desktop menyebut `Virtual Machine Platform is not enabled`, jalankan
 | POST | `/api/auth/login` | Publik | Masuk dan menerima cookie sesi HTTP-only |
 | POST | `/api/auth/logout` | Publik | Hapus sesi |
 | GET | `/api/auth/me` | Sesi | Profil pengguna yang sedang masuk |
+| POST | `/api/users` | Admin | Buat akun pengguna; akun Dosen juga dibuat dan ditautkan ke profil dosen |
 | GET | `/api/lecturers` | Publik | Katalog dosen dan program studi |
 | GET | `/api/study-programs` | Publik | Daftar program studi |
 | GET | `/api/semesters` | Publik | Daftar semester dan semester aktif |

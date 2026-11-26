@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { User, Mail, Lock, Building2, GraduationCap, Briefcase, CheckCircle, ChevronDown } from "lucide-react";
 import { useToast } from "../../components/Toast";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, type UserRole } from "../../context/AuthContext";
 import { useConsultationSystem } from "../../context/ConsultationSystemContext";
 
 const BINUS_CAMPUSES = [
@@ -20,8 +20,7 @@ export function TambahUserPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { createUser } = useAuth();
-  const { createLecturer, studyPrograms, facultyHierarchy } =
-    useConsultationSystem();
+  const { studyPrograms, facultyHierarchy } = useConsultationSystem();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -47,6 +46,7 @@ export function TambahUserPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitted, setSubmitted] = useState(false);
   const [createdDosenName, setCreatedDosenName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Derived hierarchy options
   const facultyEntry = facultyHierarchy.find(f => f.name === formData.selectedFaculty) ?? null;
@@ -111,16 +111,17 @@ export function TambahUserPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (saving || !validateForm()) return;
 
+    setSaving(true);
     try {
       const baseUserData = {
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
-        role: formData.role as any,
+        role: formData.role as Exclude<UserRole, null>,
         status: formData.status,
         phone: "",
       };
@@ -128,40 +129,25 @@ export function TambahUserPage() {
       if (formData.role === "Dosen") {
         const lecturerCode = `D${Date.now().toString().slice(-4)}`;
         const keywords = peminatanEntry?.keywords ?? [];
-        // Best-effort match studyProgramId by prodi name
         const matchedProdi = studyPrograms.find(p => p.name === formData.selectedProdi);
 
-        createUser({
+        await createUser({
           ...baseUserData,
-          lecturerId: lecturerCode,
           lecturerCode,
           specialization: formData.selectedPeminatan,
+          university: formData.asalBINUS,
+          expertise: keywords,
+          studyProgramId: matchedProdi?.id,
           bio: `${formData.selectedFaculty} — ${formData.selectedProdi} — ${formData.selectedPeminatan}`,
           organization: formData.asalBINUS,
           totalConsultations: 0,
           totalSeminars: 0,
         });
-        createLecturer({
-          lecturerCode,
-          name: formData.fullName,
-          email: formData.email,
-          photo: "",
-          specialization: formData.selectedPeminatan,
-          university: formData.asalBINUS,
-          asalBINUS: formData.asalBINUS,
-          jurusan: formData.selectedProdi,
-          rating: 0,
-          experience: "",
-          expertise: keywords,
-          studyProgramId: matchedProdi?.id ?? "",
-          phone: "",
-          bio: `${formData.selectedFaculty} — ${formData.selectedProdi} — ${formData.selectedPeminatan}`,
-        });
         setCreatedDosenName(formData.fullName);
         setSubmitted(true);
         showToast("Dosen berhasil ditambahkan dan tersambung ke sistem.", "success");
       } else if (formData.role === "Siswa") {
-        createUser({
+        await createUser({
           ...baseUserData,
           schoolName: formData.schoolName,
           grade: formData.grade,
@@ -172,7 +158,7 @@ export function TambahUserPage() {
         showToast("User berhasil ditambahkan ke sistem.", "success");
         setTimeout(() => navigate("/admin/users"), 1500);
       } else if (formData.role === "UMKM") {
-        createUser({
+        await createUser({
           ...baseUserData,
           businessName: formData.businessName,
           businessCategory: formData.businessCategory,
@@ -182,11 +168,11 @@ export function TambahUserPage() {
         showToast("User berhasil ditambahkan ke sistem.", "success");
         setTimeout(() => navigate("/admin/users"), 1500);
       } else if (formData.role === "Admin") {
-        createUser({ ...baseUserData, organization: "Sistem Administrator" });
+        await createUser({ ...baseUserData, organization: "Sistem Administrator" });
         showToast("User berhasil ditambahkan ke sistem.", "success");
         setTimeout(() => navigate("/admin/users"), 1500);
       } else if (formData.role === "Guru") {
-        createUser({
+        await createUser({
           ...baseUserData,
           schoolName: formData.schoolName,
           organization: formData.schoolName,
@@ -195,7 +181,9 @@ export function TambahUserPage() {
         setTimeout(() => navigate("/admin/users"), 1500);
       }
     } catch (error) {
-      showToast("Gagal membuat user. Silakan coba lagi.", "error");
+      showToast(error instanceof Error ? error.message : "Gagal membuat user. Silakan coba lagi.", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -537,9 +525,9 @@ export function TambahUserPage() {
                 className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
                 Batal
               </button>
-              <button type="submit"
+              <button type="submit" disabled={saving}
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                Simpan User
+                {saving ? "Menyimpan..." : "Simpan User"}
               </button>
             </div>
           </form>
