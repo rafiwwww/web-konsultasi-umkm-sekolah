@@ -4,6 +4,3 @@ build/
 .next/
 *.tsbuildinfo
 backend/src/generated/prisma/query_engine-windows.dll.node.tmp*
-.env
-.env.*
-!.env.example
