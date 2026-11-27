@@ -71,20 +71,28 @@ export function KelolaZoomPage() {
     const input = getZoomInput(sessionId);
     if (!input.link.trim()) { showToast("Masukkan link Zoom meeting terlebih dahulu", "warning"); return; }
     setSubmitting(sessionId);
-    await new Promise(r => setTimeout(r, 600));
-    confirmZoomMeeting(sessionId, input.link.trim(), input.notes.trim(), user?.name || "Admin");
-    setSubmitting(null);
-    showToast("Zoom meeting berhasil dikonfirmasi. Semua peserta kini dapat melihat link meeting.", "success");
+    try {
+      await confirmZoomMeeting(sessionId, input.link.trim(), input.notes.trim(), user?.name || "Admin");
+      showToast("Zoom meeting berhasil dikonfirmasi. Semua peserta kini dapat melihat link meeting.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Zoom meeting gagal dikonfirmasi.", "error");
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleUpdateLink = async (sessionId: string) => {
     const input = getZoomInput(sessionId);
     if (!input.link.trim()) { showToast("Masukkan link Zoom baru terlebih dahulu", "warning"); return; }
     setSubmitting(sessionId);
-    await new Promise(r => setTimeout(r, 400));
-    updateSessionZoomLink(sessionId, input.link.trim(), user?.name || "Admin");
-    setSubmitting(null);
-    showToast("Link Zoom berhasil diperbarui untuk semua peserta.", "success");
+    try {
+      await updateSessionZoomLink(sessionId, input.link.trim(), user?.name || "Admin");
+      showToast("Link Zoom berhasil diperbarui untuk semua peserta.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Link Zoom gagal diperbarui.", "error");
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleSaveEvalLink = async (sessionId: string, session: typeof consultationSessions[0]) => {

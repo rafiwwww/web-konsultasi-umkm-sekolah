@@ -219,8 +219,8 @@ interface ConsultationSystemContextType {
   consultationSessions: ConsultationSession[];
   activityLogs: ActivityLog[];
   acceptBookingWithSession: (bookingId: string, adminId?: string) => Promise<void>;
-  confirmZoomMeeting: (sessionId: string, zoomLink: string, notes: string, adminId: string) => void;
-  updateSessionZoomLink: (sessionId: string, zoomLink: string, adminId: string) => void;
+  confirmZoomMeeting: (sessionId: string, zoomLink: string, notes: string, adminId: string) => Promise<void>;
+  updateSessionZoomLink: (sessionId: string, zoomLink: string, adminId: string) => Promise<void>;
   getWaitingZoomSessions: () => ConsultationSession[];
   getSessionById: (sessionId: string) => ConsultationSession | undefined;
   addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp">) => void;
@@ -800,7 +800,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
             id: slot.id || `${availability.id}-${index}`,
           })),
         })));
-        setConsultationBookings((bookingData.bookings ?? []).map(booking => ({
+        const loadedBookings = (bookingData.bookings ?? []).map(booking => ({
           ...booking,
           scheduledDate: booking.scheduledDate.slice(0, 10),
           scheduledTimeSlot: {
@@ -810,7 +810,43 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
             }),
             id: booking.scheduledTimeSlot?.id || `${booking.id}-slot`,
           },
-        })));
+        }));
+        setConsultationBookings(loadedBookings);
+
+        const sessionGroups = new Map<string, ConsultationSession>();
+        loadedBookings.forEach(booking => {
+          if (!["waiting_zoom", "scheduled", "completed"].includes(booking.status)) return;
+          const sessionStatus = booking.status === "waiting_zoom"
+            ? "waiting_zoom"
+            : booking.status === "completed" ? "completed" : "ready";
+          const key = [
+            booking.lecturerId,
+            booking.scheduledDate,
+            booking.scheduledTimeSlot.startTime,
+            booking.scheduledTimeSlot.endTime,
+            sessionStatus,
+          ].join("__");
+          const existingSession = sessionGroups.get(key);
+          if (existingSession) {
+            existingSession.bookingIds.push(booking.id);
+            return;
+          }
+          sessionGroups.set(key, {
+            id: `db-session-${key}`,
+            lecturerId: booking.lecturerId,
+            lecturerName: booking.lecturerName,
+            scheduledDate: booking.scheduledDate,
+            scheduledDay: booking.scheduledDay,
+            scheduledTimeSlot: booking.scheduledTimeSlot,
+            bookingIds: [booking.id],
+            ...(booking.zoomLink ? { zoomLink: booking.zoomLink } : {}),
+            status: sessionStatus,
+            createdAt: booking.createdAt,
+            updatedAt: booking.updatedAt,
+            ...(sessionStatus !== "waiting_zoom" ? { confirmedAt: booking.updatedAt } : {}),
+          });
+        });
+        setConsultationSessions([...sessionGroups.values()]);
       } catch (error) {
         if (active) console.error("Gagal memuat data konsultasi dari backend:", error);
       }
@@ -1214,9 +1250,17 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     });
   };
 
-  const confirmZoomMeeting = (sessionId: string, zoomLink: string, notes: string, adminId: string) => {
+  const confirmZoomMeeting = async (sessionId: string, zoomLink: string, notes: string, adminId: string) => {
     const session = consultationSessions.find(s => s.id === sessionId);
     if (!session) return;
+
+    const result = await apiRequest<{ bookings: { id: string; status: ConsultationBooking["status"]; zoomLink: string | null }[] }>(
+      "/api/consultations/zoom",
+      {
+        method: "POST",
+        body: JSON.stringify({ action: "confirm", bookingIds: session.bookingIds, zoomLink }),
+      },
+    );
 
     // Update session
     setConsultationSessions(prev =>
@@ -1238,7 +1282,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     // Update all bookings in this session to scheduled + zoomLink
     setConsultationBookings(prev =>
       prev.map(b =>
-        session.bookingIds.includes(b.id)
+        result.bookings.some(updated => updated.id === b.id)
           ? { ...b, status: "scheduled", zoomLink, sessionId, updatedAt: new Date().toISOString() }
           : b
       )
@@ -1253,9 +1297,17 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
     });
   };
 
-  const updateSessionZoomLink = (sessionId: string, zoomLink: string, adminId: string) => {
+  const updateSessionZoomLink = async (sessionId: string, zoomLink: string, adminId: string) => {
     const session = consultationSessions.find(s => s.id === sessionId);
     if (!session) return;
+
+    const result = await apiRequest<{ bookings: { id: string; status: ConsultationBooking["status"]; zoomLink: string | null }[] }>(
+      "/api/consultations/zoom",
+      {
+        method: "POST",
+        body: JSON.stringify({ action: "update", bookingIds: session.bookingIds, zoomLink }),
+      },
+    );
 
     setConsultationSessions(prev =>
       prev.map(s =>
@@ -1267,7 +1319,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
     setConsultationBookings(prev =>
       prev.map(b =>
-        session.bookingIds.includes(b.id) ? { ...b, zoomLink, updatedAt: new Date().toISOString() } : b
+        result.bookings.some(updated => updated.id === b.id) ? { ...b, zoomLink, updatedAt: new Date().toISOString() } : b
       )
     );
 

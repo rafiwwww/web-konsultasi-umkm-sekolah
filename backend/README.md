@@ -99,6 +99,7 @@ Jika Docker Desktop menyebut `Virtual Machine Platform is not enabled`, jalankan
 | DELETE | `/api/availabilities?id=:id` | Admin, Dosen terkait | Hapus jadwal dosen |
 | GET, POST | `/api/consultations` | Sesi | Daftar sesuai peran atau ajukan konsultasi |
 | PATCH | `/api/consultations/:id` | Pemilik, dosen terkait, Admin | Perbarui status, jadwal, tautan, penilaian, atau catatan |
+| POST | `/api/consultations/zoom` | Admin | Konfirmasi atau perbarui link Zoom untuk seluruh peserta konsultasi |
 | GET | `/api/seminars` | Publik | Daftar seminar; pengguna publik hanya melihat yang terbit |
 | POST | `/api/seminars` | Admin, Dosen | Buat seminar |
 | PATCH, DELETE | `/api/seminars/:id` | Admin | Perbarui atau hapus seminar |
