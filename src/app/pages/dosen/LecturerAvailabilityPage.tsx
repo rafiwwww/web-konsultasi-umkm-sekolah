@@ -200,9 +200,6 @@ export function LecturerAvailabilityPage() {
             Kembali ke Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Registrasi Pengabdian ke Masyarakat (PKM)</h1>
-          <p className="text-gray-600">
-            Semester: <span className="font-medium">{activeSemester.name}</span> ({activeSemester.startDate} s/d {activeSemester.endDate})
-          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -331,8 +328,6 @@ export function LecturerAvailabilityPage() {
             <div className="text-sm text-blue-900">
               <p className="font-medium mb-1">Informasi Penting:</p>
               <ul className="list-disc list-inside space-y-1 text-blue-800">
-                <li>Jadwal yang Anda buat hanya berlaku untuk semester aktif ({activeSemester.name})</li>
-                <li>Setelah semester berakhir, Anda perlu membuat jadwal baru untuk semester berikutnya</li>
                 <li>Slot waktu yang sudah dibooking oleh mahasiswa/UMKM tidak dapat dihapus</li>
                 <li>Pastikan jadwal Anda tidak bertabrakan dengan jadwal mengajar</li>
               </ul>
