@@ -145,6 +145,7 @@ export const consultationBookings = pgTable("ConsultationBooking", {
   feedback: text("feedback"),
   rating: integer("rating"),
   zoomLink: text("zoomLink"),
+  evaluationLink: text("evaluationLink"),
   rescheduleNote: text("rescheduleNote"),
   attachmentFileName: varchar("attachmentFileName", { length: 255 }),
   attachmentUrl: text("attachmentUrl"),

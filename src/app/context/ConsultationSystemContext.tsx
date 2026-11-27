@@ -127,6 +127,7 @@ export interface ConsultationBooking {
   // Additional data
   feedback?: string;
   rating?: number;
+  evaluationLink?: string;
   zoomLink?: string;
   rescheduleNote?: string;
   attachmentFileName?: string;
@@ -224,7 +225,7 @@ interface ConsultationSystemContextType {
   getWaitingZoomSessions: () => ConsultationSession[];
   getSessionById: (sessionId: string) => ConsultationSession | undefined;
   addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp">) => void;
-  setEvaluationLink: (sessionId: string, link: string, adminId: string) => void;
+  setEvaluationLink: (sessionId: string, link: string, adminId: string) => Promise<void>;
   markSessionCompleted: (sessionId: string, adminId: string) => void;
   changeLecturerForSession: (sessionId: string, newLecturerId: string, newLecturerName: string, adminId: string) => void;
 }
@@ -840,6 +841,7 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
             scheduledTimeSlot: booking.scheduledTimeSlot,
             bookingIds: [booking.id],
             ...(booking.zoomLink ? { zoomLink: booking.zoomLink } : {}),
+            ...(booking.evaluationLink ? { evaluationLink: booking.evaluationLink } : {}),
             status: sessionStatus,
             createdAt: booking.createdAt,
             updatedAt: booking.updatedAt,
@@ -1373,9 +1375,26 @@ export function ConsultationSystemProvider({ children }: { children: ReactNode }
 
   // ==================== EVALUATION & SESSION MANAGEMENT ====================
 
-  const setEvaluationLink = (sessionId: string, link: string, adminId: string) => {
+  const setEvaluationLink = async (sessionId: string, link: string, adminId: string) => {
+    const session = consultationSessions.find(item => item.id === sessionId);
+    if (!session) throw new Error("Sesi konsultasi tidak ditemukan. Muat ulang halaman lalu coba lagi.");
+    const result = await apiRequest<{
+      bookings: { id: string; evaluationLink: string | null }[];
+    }>("/api/consultations/zoom", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "evaluation",
+        bookingIds: session.bookingIds,
+        evaluationLink: link,
+      }),
+    });
     setConsultationSessions(prev =>
       prev.map(s => s.id === sessionId ? { ...s, evaluationLink: link, updatedAt: new Date().toISOString() } : s)
+    );
+    setConsultationBookings(prev =>
+      prev.map(booking => result.bookings.some(updated => updated.id === booking.id)
+        ? { ...booking, evaluationLink: link, updatedAt: new Date().toISOString() }
+        : booking)
     );
     addActivityLog({
       action: "EVALUATION_LINK_SET",

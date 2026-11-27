@@ -5,11 +5,18 @@ import { requireSession } from "@/lib/auth";
 import { getDatabase } from "@/lib/db";
 import { consultationBookings } from "@/db/schema";
 
-const zoomUpdateSchema = z.object({
-  action: z.enum(["confirm", "update"]),
-  bookingIds: z.array(z.uuid()).min(1).max(100),
-  zoomLink: z.url(),
-}).refine((value) => new Set(value.bookingIds).size === value.bookingIds.length, {
+const zoomUpdateSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.enum(["confirm", "update"]),
+    bookingIds: z.array(z.uuid()).min(1).max(100),
+    zoomLink: z.url(),
+  }),
+  z.object({
+    action: z.literal("evaluation"),
+    bookingIds: z.array(z.uuid()).min(1).max(100),
+    evaluationLink: z.url(),
+  }),
+]).refine((value) => new Set(value.bookingIds).size === value.bookingIds.length, {
   path: ["bookingIds"],
   message: "ID konsultasi tidak boleh duplikat.",
 });
@@ -23,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Data Zoom tidak valid.", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { action, bookingIds, zoomLink } = parsed.data;
+  const { action, bookingIds } = parsed.data;
   const db = getDatabase();
   const updatedBookings = await db.transaction(async (tx) => {
     const bookings = await tx.select({
@@ -41,14 +48,19 @@ export async function POST(request: Request) {
 
     const updated = await tx.update(consultationBookings)
       .set({
-        zoomLink,
-        ...(action === "confirm" ? { status: "scheduled" as const } : {}),
+        ...(action === "evaluation"
+          ? { evaluationLink: parsed.data.evaluationLink }
+          : {
+              zoomLink: parsed.data.zoomLink,
+              ...(action === "confirm" ? { status: "scheduled" as const } : {}),
+            }),
       })
       .where(inArray(consultationBookings.id, bookingIds))
       .returning({
         id: consultationBookings.id,
         status: consultationBookings.status,
         zoomLink: consultationBookings.zoomLink,
+        evaluationLink: consultationBookings.evaluationLink,
         updatedAt: consultationBookings.updatedAt,
       });
 

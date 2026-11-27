@@ -1,0 +1,1 @@
+ALTER TABLE "ConsultationBooking" ADD COLUMN "evaluationLink" text;

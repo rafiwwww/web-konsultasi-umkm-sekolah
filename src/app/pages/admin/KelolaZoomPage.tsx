@@ -99,10 +99,14 @@ export function KelolaZoomPage() {
     const link = getEvalInput(sessionId, session).trim();
     if (!link) { showToast("Masukkan URL form evaluasi terlebih dahulu", "warning"); return; }
     setSubmitting(sessionId + "_eval");
-    await new Promise(r => setTimeout(r, 400));
-    setEvaluationLink(sessionId, link, user?.name || "Admin");
-    setSubmitting(null);
-    showToast("Link form evaluasi berhasil disimpan. Peserta dapat melihat tombol evaluasi.", "success");
+    try {
+      await setEvaluationLink(sessionId, link, user?.name || "Admin");
+      showToast("Link form evaluasi berhasil disimpan. Peserta dapat melihat tombol evaluasi.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Link form evaluasi gagal disimpan.", "error");
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleMarkComplete = (sessionId: string) => {

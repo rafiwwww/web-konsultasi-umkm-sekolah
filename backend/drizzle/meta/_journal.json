@@ -8,6 +8,13 @@
       "when": 1791969313887,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795797148085,
+      "tag": "0001_nifty_nighthawk",
+      "breakpoints": true
     }
   ]
 }
